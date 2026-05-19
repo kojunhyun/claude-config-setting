@@ -97,29 +97,35 @@ if (Test-Path $claudeMdSrc) {
   }
 }
 
-# ---------- 4. Env vars in PowerShell $PROFILE ----------
+# ---------- 4. Env vars in PowerShell $PROFILE (replace block if exists) ----------
 if (-not (Test-Path $PROFILE)) {
   New-Item -ItemType File -Force -Path $PROFILE | Out-Null
 }
 
-$marker = "# Claude Code per-machine paths (managed by bootstrap.ps1)"
+$marker    = "# Claude Code per-machine paths (managed by bootstrap.ps1)"
+$endMarker = "# /Claude Code per-machine paths"
 $profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
 if ($null -eq $profileContent) { $profileContent = "" }
 
-if ($profileContent -notmatch [regex]::Escape($marker)) {
-  $block = @"
+# Strip any existing block
+if ($profileContent -match [regex]::Escape($marker)) {
+  $pattern = "(?ms)" + [regex]::Escape($marker) + ".*?" + [regex]::Escape($endMarker) + "\r?\n?"
+  $profileContent = [regex]::Replace($profileContent, $pattern, "")
+  Set-Content $PROFILE $profileContent -NoNewline
+  Write-Host "[bootstrap] removed old env vars block from $PROFILE"
+}
+
+$block = @"
 
 $marker
 `$env:CLAUDE_CONFIG_DIR = '$ConfigDir'
 `$env:PROJECTS_DIR      = '$ProjectsDir'
 `$env:OBSIDIAN_DIR      = '$ObsidianDir'
 `$env:AGENT_TEAM_DIR    = '$AgentTeamDir'
+$endMarker
 "@
-  Add-Content $PROFILE $block
-  Write-Host "[bootstrap] env vars appended to $PROFILE"
-} else {
-  Write-Host "[bootstrap] env vars already in $PROFILE — skipping"
-}
+Add-Content $PROFILE $block
+Write-Host "[bootstrap] env vars written to $PROFILE"
 
 # ---------- 5. Also set User-scope env vars (so non-PS apps see them) ----------
 [Environment]::SetEnvironmentVariable("CLAUDE_CONFIG_DIR", $ConfigDir,    "User")
@@ -127,6 +133,14 @@ $marker
 [Environment]::SetEnvironmentVariable("OBSIDIAN_DIR",     $ObsidianDir,   "User")
 [Environment]::SetEnvironmentVariable("AGENT_TEAM_DIR",   $AgentTeamDir,  "User")
 Write-Host "[bootstrap] User env vars set (Windows-wide)"
+
+# ---------- 5b. Enable git hooks ----------
+if ((Test-Path (Join-Path $ConfigDir ".git")) -and (Test-Path (Join-Path $ConfigDir "hooks"))) {
+  Push-Location $ConfigDir
+  git config core.hooksPath hooks | Out-Null
+  Pop-Location
+  Write-Host "[bootstrap] git hooks enabled (core.hooksPath = hooks)"
+}
 
 # ---------- 6. Final hint ----------
 Write-Host ""

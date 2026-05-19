@@ -135,10 +135,63 @@ git push
 **다른 머신에서 받기:**
 ```bash
 cd $CLAUDE_CONFIG_DIR
-git pull
-./bootstrap.sh    # (or bootstrap.ps1 on Windows-only)
-                  # CLAUDE.md copy 갱신 + 새 symlink 보정
+git pull                 # post-merge hook 자동 실행 (CLAUDE.md 동기화)
+# 신규 명령/스킬은 Claude Code 재시작만 하면 인식
 ```
+
+`post-merge` 훅이 `hooks/` 에서 자동 실행됨. Windows 만 CLAUDE.md copy 갱신, 나머지는 symlink 라 무작업.
+
+---
+
+## 다른 경로/드라이브로 이동
+
+bootstrap 스크립트는 **자기 위치 기준**으로 동작. clone 어디 하든 OK.
+
+**시나리오 A — 새 위치에 clone (기존 폐기)**
+
+```bash
+# 기존 위치 무관, 그냥 새 위치에 clone
+git clone git@github.com:고준현/claude-config.git /mnt/e/MyClaude
+cd /mnt/e/MyClaude
+./bootstrap.sh
+# → 모든 symlink/junction 새 위치로 재지정, env vars 값 자동 갱신, 옛 위치는 끊김
+```
+
+**시나리오 B — 기존 폴더 옮기기 (히스토리 보존)**
+
+```bash
+# 1. 폴더 이동
+mv /mnt/d/00_Claude_Config /mnt/e/MyClaude
+
+# 2. bootstrap 재실행 (스크립트가 새 위치 자동 감지)
+cd /mnt/e/MyClaude
+./bootstrap.sh
+# → symlink/junction/env vars 자동 갱신
+```
+
+**시나리오 C — Custom 경로 지정**
+
+```bash
+# WSL/Mac/Linux
+PROJECTS_DIR=/custom/path OBSIDIAN_DIR=/custom/notes ./bootstrap.sh
+```
+
+```powershell
+# Windows
+.\bootstrap.ps1 -ProjectsDir 'E:\MyProjects' -ObsidianDir 'E:\Notes'
+```
+
+bootstrap 은 idempotent — env vars block 마커로 감지해 **값만 갱신** (중복 안 쌓임).
+
+---
+
+## Git 훅 (자동 동기화)
+
+`bootstrap` 이 `git config core.hooksPath hooks` 설정. 이후 모든 `git pull` 마다 `hooks/post-merge` 자동 실행:
+- Linux/Mac/WSL: symlink 라 무작업
+- Windows: CLAUDE.md copy 자동 갱신 (Dev Mode 없을 때 대응)
+
+훅 추가/수정 시 `hooks/` 폴더 안에 두면 모든 clone 에서 즉시 적용.
 
 ---
 

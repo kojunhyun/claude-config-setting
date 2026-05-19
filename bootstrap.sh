@@ -95,20 +95,36 @@ for item in agents commands skills templates; do
 done
 link_or_replace "$CLAUDE_CONFIG_DIR/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 
-# ---------- 3. Add env vars to shell rc (if missing) ----------
+# ---------- 3. Update env vars in shell rc (replace block if exists) ----------
 MARKER="# Claude Code per-machine paths (managed by bootstrap.sh)"
-if [ -f "$SHELL_RC" ] && grep -qF "$MARKER" "$SHELL_RC"; then
-  echo "[bootstrap] env vars already in $SHELL_RC — skipping"
-else
-  cat >> "$SHELL_RC" <<EOF
+END_MARKER="# /Claude Code per-machine paths"
+touch "$SHELL_RC"
+# Remove any existing block (between markers)
+if grep -qF "$MARKER" "$SHELL_RC"; then
+  awk -v m="$MARKER" -v e="$END_MARKER" '
+    BEGIN { skip=0 }
+    index($0, m) { skip=1; next }
+    skip && index($0, e) { skip=0; next }
+    !skip { print }
+  ' "$SHELL_RC" > "$SHELL_RC.tmp" && mv "$SHELL_RC.tmp" "$SHELL_RC"
+  echo "[bootstrap] removed old env vars block from $SHELL_RC"
+fi
+cat >> "$SHELL_RC" <<EOF
 
 $MARKER
 export CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR"
 export PROJECTS_DIR="$PROJECTS_DIR"
 export OBSIDIAN_DIR="$OBSIDIAN_DIR"
 export AGENT_TEAM_DIR="$AGENT_TEAM_DIR"
+$END_MARKER
 EOF
-  echo "[bootstrap] env vars appended to $SHELL_RC"
+echo "[bootstrap] env vars written to $SHELL_RC"
+
+# ---------- 3b. Enable git hooks (post-merge auto-sync) ----------
+if [ -d "$CLAUDE_CONFIG_DIR/.git" ] && [ -d "$CLAUDE_CONFIG_DIR/hooks" ]; then
+  ( cd "$CLAUDE_CONFIG_DIR" && git config core.hooksPath hooks )
+  chmod +x "$CLAUDE_CONFIG_DIR/hooks/"* 2>/dev/null || true
+  echo "[bootstrap] git hooks enabled (core.hooksPath = hooks)"
 fi
 
 # ---------- 4. WSL-specific: also setup Windows side ----------

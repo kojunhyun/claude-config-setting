@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Runs after `git pull` / `git merge`.
+# Cross-platform refresh of links that don't auto-update.
+#
+# - WSL/Linux/macOS: ~/.claude/* are symlinks → no action needed
+# - Windows: CLAUDE.md is a COPY (Dev Mode off) → re-copy it
+#
+# Triggered automatically when core.hooksPath = hooks (set by bootstrap).
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Detect platform
+detect_os() {
+  case "$(uname -s)" in
+    Darwin) echo "macos" ;;
+    Linux)
+      if grep -qiE "microsoft|wsl" /proc/version 2>/dev/null; then
+        echo "wsl"
+      else
+        echo "linux"
+      fi
+      ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+    *) echo "unknown" ;;
+  esac
+}
+
+OS=$(detect_os)
+
+# WSL: also refresh Windows side via powershell
+if [ "$OS" = "wsl" ]; then
+  WIN_PATH=$(echo "$REPO_ROOT" | sed -E 's|^/mnt/([a-z])/|\U\1:\\|; s|/|\\|g')
+  echo "[post-merge] WSL detected — refreshing Windows CLAUDE.md copy"
+  powershell.exe -NoProfile -Command "Copy-Item '$WIN_PATH\CLAUDE.md' \"\$env:USERPROFILE\.claude\CLAUDE.md\" -Force" 2>&1 \
+    || echo "[post-merge] WARN: Windows CLAUDE.md copy failed (Claude Desktop may keep WSL view in sync)"
+fi
+
+# Native Windows (git-bash)
+if [ "$OS" = "windows" ]; then
+  echo "[post-merge] Windows — refreshing CLAUDE.md copy"
+  cp "$REPO_ROOT/CLAUDE.md" "$USERPROFILE/.claude/CLAUDE.md" || true
+fi
+
+# Mac/Linux/WSL native side — symlinks self-update, nothing to do
+echo "[post-merge] done"
