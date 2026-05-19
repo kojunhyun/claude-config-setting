@@ -11,7 +11,7 @@ description: 회의 전사본/메모를 구조화해 Notion + Obsidian에 동시
 
 1. `meeting-notes` 스킬 로드
 2. 입력에서 결정사항/액션아이템/논의 추출
-3. Obsidian (`/mnt/d/obsidian/Meetings/`) + Notion 동시 저장
+3. Obsidian (`$OBSIDIAN_DIR/Meetings/`) + Notion 동시 저장
 
 ## 사용 예
 
@@ -28,7 +28,7 @@ description: 회의 전사본/메모를 구조화해 Notion + Obsidian에 동시
 
 ## 산출물
 
-- `/mnt/d/obsidian/Meetings/2026-MM-DD-{slug}.md`
+- `$OBSIDIAN_DIR/Meetings/2026-MM-DD-{slug}.md`
 - Notion 페이지 (URL은 응답에 표시)
 
 ## 주의

@@ -31,8 +31,8 @@ description: AI 기술 주제를 조사하고 비전공자도 이해할 HTML 노
 
 ## 산출물
 
-- `/mnt/d/obsidian/Tech-Notes/{slug}/index.html` (시각화 포함)
-- `/mnt/d/obsidian/Tech-Notes/{slug}/index.md` (Obsidian 노트용)
+- `$OBSIDIAN_DIR/Tech-Notes/{slug}/index.html` (시각화 포함)
+- `$OBSIDIAN_DIR/Tech-Notes/{slug}/index.md` (Obsidian 노트용)
 - Notion 페이지
 
 ## 주의

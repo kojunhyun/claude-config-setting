@@ -27,7 +27,7 @@ default_tech_stack:
 - **사용자 = 팀장**. 오케스트레이터(메인 oh 세션) = 비서이자 조정자
 - **Lead 6명**은 각각 독립 컨텍스트(subagent)로 동작. Lead 간 정보 교환은 orchestrator가 중계
 - **게이트**: 사용자 확인이 필요한 두 지점이 있음 — Stage 3(통합 계획 승인), Stage 6(git push 직전)
-- **작업물 디렉토리**: `/mnt/d/00_Project/{project-slug}/`
+- **작업물 디렉토리**: `$PROJECTS_DIR/{project-slug}/`
 - **권한 모드**: `full_auto` — 파일 생성/수정 자유롭게, 단 게이트는 반드시 사용자에게
 
 ## 6단계 파이프라인

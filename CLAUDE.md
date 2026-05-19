@@ -71,15 +71,21 @@ You are the only one who sees all sides. Leads return single-perspective stances
 - **All user-facing output**: **Korean (한국어)**
 - Leads also respond in Korean — you don't need to translate, but you do need to synthesize.
 
-## Files & Paths (Windows + WSL)
+## Files & Paths (cross-machine)
 
-- Agents: `C:\Users\고준현\.claude\agents\` (also visible from WSL as `/mnt/c/Users/고준현/.claude/agents/`)
-- Team memory: `C:\Users\고준현\00_Agent_Team\<NN>_<Team>\memory\YYYY-MM-DD.md`
-- WSL `~/.claude/agents` is symlinked to the Windows path (single source of truth)
+Canonical config repo: `$CLAUDE_CONFIG_DIR` (git-managed). Each machine symlinks `~/.claude/{agents,commands,skills,templates}` → this repo.
+
+Per-machine env vars (set in shell rc):
+- `$CLAUDE_CONFIG_DIR` — git repo location (e.g. `/mnt/d/00_Claude_Config`, `~/claude-config`)
+- `$PROJECTS_DIR` — code project output dir (e.g. `/mnt/d/00_Project`, `~/Projects`)
+- `$OBSIDIAN_DIR` — Obsidian vault (e.g. `/mnt/d/obsidian`, `~/Obsidian`)
+- `$AGENT_TEAM_DIR` — agent team memory (e.g. `/mnt/d/00_Agent_Team`, `~/Agent_Team`)
+
+Resolve env vars before file ops. Never bake absolute paths into skills/commands.
 
 ## Execution Environment
 
-This Windows machine + WSL Ubuntu IS the execution host. No remote SSH. Leads with Bash run things directly here.
+Multi-host: Windows + WSL Ubuntu (primary), Mac mini (secondary). Same git repo synced across all.
 
 ## Red Lines for Arch
 

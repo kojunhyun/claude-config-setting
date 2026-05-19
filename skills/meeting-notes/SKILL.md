@@ -3,7 +3,7 @@ name: meeting-notes
 description: |
   회의록을 구조화해 Notion + Obsidian 양쪽에 동시 저장. 음성 전사본/메모/거친 기록을 받아
   결정사항/액션아이템(담당자+기한)/논의/후속과제로 분리. Notion MCP로 직접 업로드 +
-  /mnt/d/obsidian/Meetings/ 에 파일 저장.
+  $OBSIDIAN_DIR/Meetings/ 에 파일 저장.
   Use this skill when the user runs `/meeting` or shares meeting notes/transcripts.
 when_to_use:
   - "/meeting 명령으로 시작"
@@ -68,7 +68,7 @@ agenda:
 
 ## Stage 2: Obsidian 저장
 
-저장 경로: `/mnt/d/obsidian/Meetings/YYYY-MM-DD-{slug}.md`
+저장 경로: `$OBSIDIAN_DIR/Meetings/YYYY-MM-DD-{slug}.md`
 
 파일 형식 (YAML frontmatter + 본문):
 
@@ -121,7 +121,7 @@ Notion MCP (`mcp.notion.com/mcp`) 사용.
 
 ```
 회의록 정리 완료
-- Obsidian: /mnt/d/obsidian/Meetings/2026-05-19-주간회의.md
+- Obsidian: $OBSIDIAN_DIR/Meetings/2026-05-19-주간회의.md
 - Notion: https://notion.so/...
 
 핵심 결정 3건 / 액션아이템 5건

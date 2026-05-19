@@ -51,10 +51,10 @@ when_to_use:
 
 템플릿: `~/.claude/templates/tech-note.html`
 
-저장 경로: `/mnt/d/obsidian/Tech-Notes/{slug}/index.html`
+저장 경로: `$OBSIDIAN_DIR/Tech-Notes/{slug}/index.html`
 
 함께 저장할 것:
-- `/mnt/d/obsidian/Tech-Notes/{slug}/index.md` (Obsidian 노트용 마크다운 버전)
+- `$OBSIDIAN_DIR/Tech-Notes/{slug}/index.md` (Obsidian 노트용 마크다운 버전)
 
 마크다운 노트 frontmatter:
 ```yaml
@@ -120,7 +120,7 @@ notion_url: "{Notion 페이지 URL}"
 
 ```
 기술 노트 완성: {주제}
-- Obsidian: /mnt/d/obsidian/Tech-Notes/{slug}/index.html
+- Obsidian: $OBSIDIAN_DIR/Tech-Notes/{slug}/index.html
 - Notion: https://notion.so/...
 
 핵심 3가지: {bullet}

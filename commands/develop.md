@@ -30,4 +30,4 @@ description: 풀스택 멀티 에이전트 코드개발 파이프라인 시작. 
 
 - 처음 사용 시 git remote URL을 묻습니다 (Stage 6에서)
 - 완료까지 길게는 1-2시간 소요. 중간 게이트에서 사용자 확인 필요
-- 산출물은 `/mnt/d/00_Project/{slug}/` 에 누적
+- 산출물은 `$PROJECTS_DIR/{slug}/` 에 누적

@@ -31,7 +31,7 @@ description: 정부과제 공고를 받아 제안서 본문 + PPT용 HTML 시각
 
 ## 산출물
 
-`/mnt/d/00_Project/grant-{slug}/`:
+`$PROJECTS_DIR/grant-{slug}/`:
 - `03-proposal.md` (본문)
 - `pipeline/style1~5.html` (PPT 캡처용)
 - `pipeline/INDEX.html` (5종 비교)

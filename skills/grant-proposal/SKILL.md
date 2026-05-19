@@ -29,7 +29,7 @@ AI 개발 팀장 관점에서 정부과제 제안서를 작성한다. 핵심 원
 
 ## 산출물
 
-작업 디렉토리: `/mnt/d/00_Project/grant-{공고요약}/`
+작업 디렉토리: `$PROJECTS_DIR/grant-{공고요약}/`
 
 ```
 outputs/grant-{slug}/
