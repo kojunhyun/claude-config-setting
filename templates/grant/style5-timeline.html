@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>{{PROJECT_TITLE}} - Timeline Pipeline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #ffffff;
+    font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+    color: #0f172a;
+  }
+  .slide { width: 1920px; height: 1080px; margin: 0 auto; padding: 70px 100px; position: relative; }
+  .title { font-size: 50px; font-weight: 800; letter-spacing: -0.02em; }
+  .subtitle { font-size: 22px; color: #64748b; margin-top: 8px; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1 class="title">{{PROJECT_TITLE}}</h1>
+  <div class="subtitle">{{PROJECT_SUBTITLE}}</div>
+
+  <svg viewBox="0 0 1720 700" width="1720" height="700" style="margin-top:50px;">
+    <defs>
+      <marker id="arrowend" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+        <path d="M0,0 L10,5 L0,10 Z" fill="#0f172a"/>
+      </marker>
+    </defs>
+
+    <!-- 타임라인 메인 선 -->
+    <line x1="50" y1="350" x2="1670" y2="350" stroke="#0f172a" stroke-width="4" marker-end="url(#arrowend)"/>
+
+    <!-- 연차 라벨 (위쪽) -->
+    <g font-family="'Pretendard',sans-serif">
+      <!-- 1년차 -->
+      <g>
+        <line x1="200" y1="180" x2="200" y2="340" stroke="#3b82f6" stroke-width="3"/>
+        <circle cx="200" cy="350" r="18" fill="#3b82f6" stroke="#fff" stroke-width="4"/>
+        <text x="200" y="354" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">1</text>
+        <rect x="60" y="110" width="280" height="60" rx="12" fill="#dbeafe"/>
+        <text x="200" y="135" text-anchor="middle" font-size="14" font-weight="700" fill="#1e40af" letter-spacing="0.08em">1년차 / YEAR 1</text>
+        <text x="200" y="160" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">{{YEAR1_THEME}}</text>
+      </g>
+
+      <!-- 2년차 -->
+      <g>
+        <line x1="620" y1="430" x2="620" y2="360" stroke="#7c3aed" stroke-width="3"/>
+        <circle cx="620" cy="350" r="18" fill="#7c3aed" stroke="#fff" stroke-width="4"/>
+        <text x="620" y="354" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">2</text>
+        <rect x="480" y="440" width="280" height="60" rx="12" fill="#ede9fe"/>
+        <text x="620" y="465" text-anchor="middle" font-size="14" font-weight="700" fill="#5b21b6" letter-spacing="0.08em">2년차 / YEAR 2</text>
+        <text x="620" y="490" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">{{YEAR2_THEME}}</text>
+      </g>
+
+      <!-- 3년차 -->
+      <g>
+        <line x1="1040" y1="180" x2="1040" y2="340" stroke="#ec4899" stroke-width="3"/>
+        <circle cx="1040" cy="350" r="18" fill="#ec4899" stroke="#fff" stroke-width="4"/>
+        <text x="1040" y="354" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">3</text>
+        <rect x="900" y="110" width="280" height="60" rx="12" fill="#fce7f3"/>
+        <text x="1040" y="135" text-anchor="middle" font-size="14" font-weight="700" fill="#9d174d" letter-spacing="0.08em">3년차 / YEAR 3</text>
+        <text x="1040" y="160" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">{{YEAR3_THEME}}</text>
+      </g>
+
+      <!-- 최종 -->
+      <g>
+        <line x1="1460" y1="430" x2="1460" y2="360" stroke="#10b981" stroke-width="3"/>
+        <circle cx="1460" cy="350" r="22" fill="#10b981" stroke="#fff" stroke-width="4"/>
+        <text x="1460" y="356" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">★</text>
+        <rect x="1320" y="440" width="280" height="60" rx="12" fill="#d1fae5"/>
+        <text x="1460" y="465" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46" letter-spacing="0.08em">FINAL OUTCOME</text>
+        <text x="1460" y="490" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">{{FINAL_THEME}}</text>
+      </g>
+    </g>
+
+    <!-- 1년차 마일스톤 (아래쪽) -->
+    <g>
+      <text x="200" y="600" text-anchor="middle" font-size="13" font-weight="700" fill="#1e40af">주요 산출물</text>
+      <text x="200" y="625" text-anchor="middle" font-size="14" fill="#334155">{{YEAR1_M1}}</text>
+      <text x="200" y="648" text-anchor="middle" font-size="14" fill="#334155">{{YEAR1_M2}}</text>
+      <text x="200" y="671" text-anchor="middle" font-size="14" fill="#334155">{{YEAR1_M3}}</text>
+    </g>
+
+    <!-- 2년차 (위쪽) -->
+    <g>
+      <text x="620" y="260" text-anchor="middle" font-size="13" font-weight="700" fill="#5b21b6">주요 산출물</text>
+      <text x="620" y="285" text-anchor="middle" font-size="14" fill="#334155">{{YEAR2_M1}}</text>
+      <text x="620" y="308" text-anchor="middle" font-size="14" fill="#334155">{{YEAR2_M2}}</text>
+      <text x="620" y="331" text-anchor="middle" font-size="14" fill="#334155">{{YEAR2_M3}}</text>
+    </g>
+
+    <!-- 3년차 (아래쪽) -->
+    <g>
+      <text x="1040" y="600" text-anchor="middle" font-size="13" font-weight="700" fill="#9d174d">주요 산출물</text>
+      <text x="1040" y="625" text-anchor="middle" font-size="14" fill="#334155">{{YEAR3_M1}}</text>
+      <text x="1040" y="648" text-anchor="middle" font-size="14" fill="#334155">{{YEAR3_M2}}</text>
+      <text x="1040" y="671" text-anchor="middle" font-size="14" fill="#334155">{{YEAR3_M3}}</text>
+    </g>
+
+    <!-- 최종 (위쪽) -->
+    <g>
+      <text x="1460" y="260" text-anchor="middle" font-size="13" font-weight="700" fill="#065f46">최종 목표</text>
+      <text x="1460" y="285" text-anchor="middle" font-size="14" fill="#334155">{{FINAL_M1}}</text>
+      <text x="1460" y="308" text-anchor="middle" font-size="14" fill="#334155">{{FINAL_M2}}</text>
+      <text x="1460" y="331" text-anchor="middle" font-size="14" fill="#334155">{{FINAL_M3}}</text>
+    </g>
+  </svg>
+
+  <div style="position:absolute;bottom:50px;left:100px;right:100px;display:flex;justify-content:space-between;font-size:14px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:20px;">
+    <div>{{ORGANIZATION}}</div>
+    <div>{{DATE}}</div>
+  </div>
+</div>
+</body>
+</html>

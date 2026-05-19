@@ -1,0 +1,34 @@
+# Per-machine local overrides
+settings.local.json
+
+# Auth / secrets
+.credentials.json
+*.token
+*.key
+
+# Caches / runtime
+cache/
+backups/
+file-history/
+session-env/
+sessions/
+shell-snapshots/
+projects/
+debug/
+paste-cache/
+channels/
+tasks/
+plugins/
+ide/
+
+# Hook state
+.caveman-active
+.last-cleanup
+policy-limits.json
+mcp-needs-auth-cache.json
+remote-settings.json
+history.jsonl
+
+# OS junk
+.DS_Store
+Thumbs.db

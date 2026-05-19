@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>{{TOPIC}} - Tech Note</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #fafafa;
+    color: #0f172a;
+    font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+    line-height: 1.7;
+    padding: 40px 20px;
+  }
+  .container { max-width: 880px; margin: 0 auto; background: #fff; border-radius: 20px; padding: 60px 70px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+
+  .tag {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    border-radius: 999px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-size: 42px; font-weight: 800; letter-spacing: -0.025em;
+    margin-bottom: 8px;
+  }
+  .subtitle { font-size: 18px; color: #64748b; margin-bottom: 40px; }
+
+  .one-liner {
+    background: linear-gradient(135deg, #eff6ff, #ede9fe);
+    border-left: 4px solid #6366f1;
+    padding: 24px 28px;
+    border-radius: 12px;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 30px 0;
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: 26px; font-weight: 700; margin: 50px 0 16px;
+    padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;
+  }
+  h3 { font-size: 20px; font-weight: 700; margin: 28px 0 12px; }
+
+  p { margin-bottom: 14px; font-size: 17px; }
+  strong { font-weight: 700; color: #1e293b; }
+
+  .analogy {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    padding: 18px 22px;
+    border-radius: 8px;
+    margin: 20px 0;
+    font-size: 16px;
+  }
+  .analogy::before {
+    content: "💡 비유";
+    display: block;
+    font-size: 12px; font-weight: 700;
+    color: #b45309; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+
+  .diagram {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 24px 0;
+    text-align: center;
+  }
+
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 20px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    overflow-x: auto;
+    margin: 20px 0;
+    font-family: 'JetBrains Mono', Menlo, monospace;
+  }
+  code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: 'JetBrains Mono', Menlo, monospace;
+  }
+  pre code { background: transparent; padding: 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 15px;
+  }
+  th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  th {
+    background: #f8fafc;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+  }
+
+  details {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  details[open] summary { margin-bottom: 12px; }
+
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .pros, .cons { padding: 20px; border-radius: 10px; }
+  .pros { background: #ecfdf5; border-left: 4px solid #10b981; }
+  .cons { background: #fef2f2; border-left: 4px solid #ef4444; }
+  .pros h4, .cons h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pros h4 { color: #065f46; }
+  .cons h4 { color: #991b1b; }
+  .pros ul, .cons ul { margin-left: 20px; }
+  .pros li, .cons li { margin: 4px 0; font-size: 15px; }
+
+  .refs {
+    margin-top: 50px;
+    padding-top: 30px;
+    border-top: 2px solid #e2e8f0;
+  }
+  .refs li {
+    font-size: 14px;
+    color: #475569;
+    margin-bottom: 8px;
+    list-style: none;
+    padding-left: 24px;
+    position: relative;
+  }
+  .refs li::before {
+    content: "[" counter(refcounter) "]";
+    counter-increment: refcounter;
+    position: absolute;
+    left: 0;
+    font-weight: 700;
+    color: #2563eb;
+  }
+  .refs ul { counter-reset: refcounter; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+    color: #94a3b8;
+    font-size: 13px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <span class="tag">TECH NOTE</span>
+  <h1>{{TOPIC}}</h1>
+  <div class="subtitle">{{SUBTITLE}}</div>
+
+  <div class="one-liner">
+    {{ONE_LINER}}
+  </div>
+
+  <h2>3분 요약 (비전공자용)</h2>
+  {{THREE_MIN_SUMMARY}}
+
+  <div class="analogy">
+    {{ANALOGY}}
+  </div>
+
+  <h2>핵심 개념 다이어그램</h2>
+  <div class="diagram">
+    {{CONCEPT_DIAGRAM_SVG}}
+  </div>
+
+  <h2>자세히 알아보기</h2>
+  {{DETAILED_EXPLANATION}}
+
+  <h2>실전 적용</h2>
+  <h3>의사코드</h3>
+  <pre><code>{{PSEUDOCODE}}</code></pre>
+
+  {{IMPLEMENTATION_NOTES}}
+
+  <h2>장단점</h2>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>장점</h4>
+      <ul>{{PROS_LIST}}</ul>
+    </div>
+    <div class="cons">
+      <h4>한계 / 단점</h4>
+      <ul>{{CONS_LIST}}</ul>
+    </div>
+  </div>
+
+  <h2>대표 사례</h2>
+  {{EXAMPLES_TABLE}}
+
+  <div class="refs">
+    <h2 style="margin-top:0;border-bottom:none;">참고문헌</h2>
+    <ul>
+      {{REFERENCES}}
+    </ul>
+  </div>
+
+  <footer>
+    작성일: {{DATE}} · 작성 도구: OpenHarness `tech-research` skill
+  </footer>
+</div>
+</body>
+</html>

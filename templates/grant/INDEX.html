@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>{{PROJECT_TITLE}} - 5종 시각자료 비교</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+    padding: 40px;
+  }
+  header { max-width: 1400px; margin: 0 auto 32px; }
+  h1 { font-size: 32px; font-weight: 800; }
+  .subtitle { color: #64748b; margin-top: 4px; }
+  .hint { margin-top: 16px; padding: 16px 20px; background: #fff; border-radius: 12px; font-size: 14px; line-height: 1.6; color: #475569; border-left: 4px solid #2563eb; }
+
+  .grid {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+  }
+  .item {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .item-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .item-title { font-size: 18px; font-weight: 700; }
+  .item-meta { font-size: 13px; color: #64748b; }
+  .item-actions { display: flex; gap: 8px; }
+  .btn {
+    padding: 6px 14px; font-size: 13px;
+    border-radius: 6px; text-decoration: none;
+    border: 1px solid #e2e8f0; color: #1e293b;
+  }
+  .btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+  iframe {
+    width: 100%; height: 380px;
+    border: none; background: #fff;
+  }
+  .description { padding: 16px 24px; font-size: 14px; color: #475569; line-height: 1.6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{PROJECT_TITLE}} — 시각자료 5종</h1>
+  <div class="subtitle">PPT 캡처용 / 1920×1080 / 흰배경 / SVG 내장</div>
+  <div class="hint">
+    각 카드의 <strong>"새 창"</strong>을 클릭해 풀스크린으로 연 다음, 브라우저의 화면 캡처 기능으로 1920×1080 영역을 저장하면 PPT에 바로 붙여 넣을 수 있습니다.
+    Chrome: F12 → Cmd/Ctrl+Shift+P → "Capture full size screenshot".
+  </div>
+</header>
+
+<div class="grid">
+  <div class="item">
+    <div class="item-header">
+      <div>
+        <div class="item-title">① Minimal</div>
+        <div class="item-meta">가는 회색 라인 · 산세리프 · 여백 강조</div>
+      </div>
+      <div class="item-actions">
+        <a class="btn" href="style1-minimal.html" target="_blank">새 창</a>
+      </div>
+    </div>
+    <iframe src="style1-minimal.html"></iframe>
+    <div class="description">학술적/정제된 느낌이 필요한 슬라이드에 적합. 본문 슬라이드, 결론 등.</div>
+  </div>
+
+  <div class="item">
+    <div class="item-header">
+      <div>
+        <div class="item-title">② Infographic</div>
+        <div class="item-meta">컬러 블록 · 아이콘 · 숫자 강조</div>
+      </div>
+      <div class="item-actions">
+        <a class="btn" href="style2-infographic.html" target="_blank">새 창</a>
+      </div>
+    </div>
+    <iframe src="style2-infographic.html"></iframe>
+    <div class="description">임팩트 강조, 발표 첫 슬라이드 또는 개요 소개에 적합.</div>
+  </div>
+
+  <div class="item">
+    <div class="item-header">
+      <div>
+        <div class="item-title">③ Flowchart</div>
+        <div class="item-meta">노드+화살표 · 단계별 흐름 · 피드백 루프</div>
+      </div>
+      <div class="item-actions">
+        <a class="btn" href="style3-flowchart.html" target="_blank">새 창</a>
+      </div>
+    </div>
+    <iframe src="style3-flowchart.html"></iframe>
+    <div class="description">기술 프로세스 명확화. 데이터/제어 흐름이 핵심인 경우.</div>
+  </div>
+
+  <div class="item">
+    <div class="item-header">
+      <div>
+        <div class="item-title">④ Layered Architecture</div>
+        <div class="item-meta">레이어 가로띠 · UI/AI/Data/Infra</div>
+      </div>
+      <div class="item-actions">
+        <a class="btn" href="style4-layered.html" target="_blank">새 창</a>
+      </div>
+    </div>
+    <iframe src="style4-layered.html"></iframe>
+    <div class="description">시스템 아키텍처 슬라이드. 기술 스택 구성 강조.</div>
+  </div>
+
+  <div class="item">
+    <div class="item-header">
+      <div>
+        <div class="item-title">⑤ Timeline</div>
+        <div class="item-meta">연차별 마일스톤 · 산출물 표시</div>
+      </div>
+      <div class="item-actions">
+        <a class="btn" href="style5-timeline.html" target="_blank">새 창</a>
+      </div>
+    </div>
+    <iframe src="style5-timeline.html"></iframe>
+    <div class="description">수행 일정/마일스톤 슬라이드. 단계별 발전 강조.</div>
+  </div>
+
+  <div class="item" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;padding:30px;text-align:center;">
+    <div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px;">사용 가이드</div>
+      <div style="font-size:14px;color:#94a3b8;line-height:1.6;">
+        한 발표에 3-5종을 골라 사용하세요:<br>
+        ② 개요 → ④ 아키텍처 → ③ 프로세스 → ⑤ 일정 → ① 결론<br><br>
+        모든 HTML은 1920×1080 기준입니다.<br>
+        PPT 슬라이드 크기를 16:9 (와이드)로 설정하면 완벽히 맞습니다.
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

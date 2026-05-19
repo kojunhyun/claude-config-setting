@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>{{PROJECT_TITLE}} - Layered Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #ffffff;
+    font-family: 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
+    color: #0f172a;
+  }
+  .slide {
+    width: 1920px; height: 1080px;
+    padding: 70px 100px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .title { font-size: 50px; font-weight: 800; letter-spacing: -0.02em; }
+  .subtitle { font-size: 22px; color: #64748b; margin-top: 8px; font-weight: 500; }
+
+  .layers {
+    margin-top: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .layer {
+    height: 130px;
+    border-radius: 16px;
+    padding: 24px 36px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    border: 1px solid;
+  }
+  .layer-label {
+    width: 200px;
+    flex-shrink: 0;
+  }
+  .layer-tag {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .layer-name {
+    font-size: 28px; font-weight: 700; margin-top: 4px;
+  }
+  .layer-items {
+    flex: 1;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .item {
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.7);
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .layer-presentation { background: #eff6ff; border-color: #93c5fd; color: #1e3a8a; }
+  .layer-application { background: #fdf4ff; border-color: #d8b4fe; color: #6b21a8; }
+  .layer-ai { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+  .layer-data { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
+  .layer-infra { background: #f8fafc; border-color: #cbd5e1; color: #334155; }
+
+  .arrow-down {
+    text-align: center; font-size: 22px; color: #94a3b8;
+    margin: -6px 0;
+  }
+
+  .footer {
+    position: absolute; bottom: 50px; left: 100px; right: 100px;
+    display: flex; justify-content: space-between;
+    font-size: 14px; color: #64748b;
+    border-top: 1px solid #e2e8f0; padding-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1 class="title">{{PROJECT_TITLE}}</h1>
+  <div class="subtitle">{{PROJECT_SUBTITLE}}</div>
+
+  <div class="layers">
+    <div class="layer layer-presentation">
+      <div class="layer-label">
+        <div class="layer-tag">Layer 1</div>
+        <div class="layer-name">Presentation</div>
+      </div>
+      <div class="layer-items">
+        <div class="item">{{L1_ITEM1}}</div>
+        <div class="item">{{L1_ITEM2}}</div>
+        <div class="item">{{L1_ITEM3}}</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">▼</div>
+
+    <div class="layer layer-application">
+      <div class="layer-label">
+        <div class="layer-tag">Layer 2</div>
+        <div class="layer-name">Application</div>
+      </div>
+      <div class="layer-items">
+        <div class="item">{{L2_ITEM1}}</div>
+        <div class="item">{{L2_ITEM2}}</div>
+        <div class="item">{{L2_ITEM3}}</div>
+        <div class="item">{{L2_ITEM4}}</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">▼</div>
+
+    <div class="layer layer-ai">
+      <div class="layer-label">
+        <div class="layer-tag">Layer 3 ★</div>
+        <div class="layer-name">AI / ML</div>
+      </div>
+      <div class="layer-items">
+        <div class="item">{{L3_ITEM1}}</div>
+        <div class="item">{{L3_ITEM2}}</div>
+        <div class="item">{{L3_ITEM3}}</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">▼</div>
+
+    <div class="layer layer-data">
+      <div class="layer-label">
+        <div class="layer-tag">Layer 4</div>
+        <div class="layer-name">Data</div>
+      </div>
+      <div class="layer-items">
+        <div class="item">{{L4_ITEM1}}</div>
+        <div class="item">{{L4_ITEM2}}</div>
+        <div class="item">{{L4_ITEM3}}</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">▼</div>
+
+    <div class="layer layer-infra">
+      <div class="layer-label">
+        <div class="layer-tag">Layer 5</div>
+        <div class="layer-name">Infrastructure</div>
+      </div>
+      <div class="layer-items">
+        <div class="item">{{L5_ITEM1}}</div>
+        <div class="item">{{L5_ITEM2}}</div>
+        <div class="item">{{L5_ITEM3}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>{{ORGANIZATION}}</div>
+    <div>{{DATE}}</div>
+  </div>
+</div>
+</body>
+</html>
