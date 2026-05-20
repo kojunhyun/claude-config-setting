@@ -30,7 +30,34 @@ git commit + push  ───── push ──►  origin/main
                                    머신 B 의 Claude Code 가 새 스킬 인식
 ```
 
-### 동기화 방법 3가지
+### 양방향 자동 동기화 (권장 패턴)
+
+```
+[작업 머신]                            [작업 안 하는 머신]
+─────────────                          ──────────────────
+edit skills/foo                        (자고 있음)
+                                       
+   ↓ 매시간 :05                        
+/config-push (자동)                    
+  - secret scan                        
+  - auto commit                        
+  - rebase + push  ─────► origin/main  
+                                       │
+                                       │ 매일 07:30
+                                       ▼
+                                  /config-sync (자동)
+                                  - git pull --rebase
+                                  - hook 가 변경 요약
+                                  - 재시작 안내
+```
+
+**등록 명령 (각 머신 1회씩):**
+```
+/schedule create config-push "5 * * * *"  run /config-push      # 매시간
+/schedule create config-pull "30 7 * * *" run /config-sync      # 매일 07:30
+```
+
+### 동기화 방법 4가지
 
 **1. 수동 `/config-sync` (가장 안전, 권장)**
 
@@ -59,7 +86,7 @@ git commit + push  ───── push ──►  origin/main
 
 수동 `git pull` 이든 `/config-sync` 든 결과로 trigger 됨.
 
-**3. 매일 자동 routine (선택)**
+**3. 매일 자동 pull routine**
 
 각 머신에서 한 번만 등록:
 
@@ -68,6 +95,22 @@ git commit + push  ───── push ──►  origin/main
 ```
 
 매일 출근 시간 전 (07:30) 자동 pull. 충돌 발생 시 cron 로그에 남고 다음번에 사용자 개입.
+
+**4. 매시간 자동 push routine (`/config-push`)**
+
+작업 머신에서 push 잊지 않게 자동:
+
+```
+/schedule create config-push "5 * * * *" run /config-push
+```
+
+매시간 5분에 변경 있으면 자동 commit + push. **secret pattern 자동 차단** (secret_*, Bearer, sk-ant, ghp_, glpat-, PRIVATE KEY 등). 발견 시 push abort + 알림.
+
+⚠️ **자동 push 위험 인지**:
+- 미완성 작업도 push 됨 (의식적 분기/PR 패턴이 필요한 큰 변경은 사용자가 먼저 수동 commit)
+- auto 라벨 commit 메시지 — 의식적 메시지가 더 좋다면 수동 commit 우선
+- secret false-negative 가능 — 진짜 secret 은 항상 paths.local.env (gitignored) 에
+- 끄기: `/schedule delete config-push`
 
 ### 무엇이 바뀌면 재시작 필요?
 
