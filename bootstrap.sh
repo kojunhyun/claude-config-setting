@@ -116,15 +116,102 @@ export CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR"
 export PROJECTS_DIR="$PROJECTS_DIR"
 export OBSIDIAN_DIR="$OBSIDIAN_DIR"
 export AGENT_TEAM_DIR="$AGENT_TEAM_DIR"
+# Auto-source shared + machine-local env files
+for _f in "\$CLAUDE_CONFIG_DIR/paths.env" "\$CLAUDE_CONFIG_DIR/paths.local.env"; do
+  [ -f "\$_f" ] && { set -a; . "\$_f"; set +a; }
+done
+unset _f
 $END_MARKER
 EOF
 echo "[bootstrap] env vars written to $SHELL_RC"
+
+# ---------- 3a-2. Auto-init paths.local.env with machine-id ----------
+LOCAL_ENV="$CLAUDE_CONFIG_DIR/paths.local.env"
+if [ ! -f "$LOCAL_ENV" ]; then
+  # Sanitize hostname + user for use as ID
+  HN="$(hostname 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]/-/g')"
+  US="$(whoami 2>/dev/null | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9-]/-/g')"
+  [ -z "$HN" ] && HN="unknown"
+  [ -z "$US" ] && US="user"
+  DEFAULT_MID="${US}-${HN}"
+  cat > "$LOCAL_ENV" <<EOF
+# paths.local.env — machine-specific overrides + SECRETS (NOT git tracked)
+# bootstrap 이 처음 실행할 때 hostname-user 조합으로 초기화.
+# 의미있는 이름으로 자유롭게 수정해도 됨.
+#
+# ⚠️ 이 파일은 secret token 을 담는다 — 외부 노출 금지.
+#    .gitignore 에 등재되어 있으나 백업/스크린샷 시 주의.
+
+# 이 머신의 고유 식별자 (daily-log 파일/Notion 페이지 분리 기준)
+CLAUDE_MACHINE_ID=$DEFAULT_MID
+
+# weekly 통합 leader 여부. 메인 머신 1대만 true. 나머지는 빈값 or false.
+CLAUDE_WEEKLY_LEADER=
+
+# --- Notion Integration Token (각 워크스페이스별 secret) -----
+# 발급 절차: SETUP.md "Notion Integration Token 셋업"
+# 1) Notion → Settings → Integrations → "Develop or manage integrations"
+# 2) 워크스페이스마다 별도 integration 생성, Internal Integration Secret 복사
+# 3) 사용할 부모 페이지에서 ... → Add connections → 해당 integration share
+# 4) 아래 변수에 secret 입력 (양쪽 따옴표 권장)
+CLAUDE_LOG_NOTION_PERSONAL_TOKEN=
+CLAUDE_LOG_NOTION_WORK_TOKEN=
+# CLAUDE_LOG_NOTION_DEFAULT_TOKEN=   # 단일 타겟 쓸 때
+
+# --- 머신별 경로 오버라이드 (선택) ---------------------------
+# CLAUDE_LOG_OBS_DAILY=
+# CLAUDE_LOG_OBS_WEEKLY=
+EOF
+  echo "[bootstrap] created $LOCAL_ENV with CLAUDE_MACHINE_ID=$DEFAULT_MID"
+  echo "[bootstrap]   tip: vi $LOCAL_ENV  to rename or set CLAUDE_WEEKLY_LEADER=true on leader"
+else
+  echo "[bootstrap] paths.local.env already exists — preserved"
+fi
 
 # ---------- 3b. Enable git hooks (post-merge auto-sync) ----------
 if [ -d "$CLAUDE_CONFIG_DIR/.git" ] && [ -d "$CLAUDE_CONFIG_DIR/hooks" ]; then
   ( cd "$CLAUDE_CONFIG_DIR" && git config core.hooksPath hooks )
   chmod +x "$CLAUDE_CONFIG_DIR/hooks/"* 2>/dev/null || true
   echo "[bootstrap] git hooks enabled (core.hooksPath = hooks)"
+fi
+
+# ---------- 3c. Install plugins from plugins.manifest ----------
+MANIFEST="$CLAUDE_CONFIG_DIR/plugins.manifest"
+if [ -f "$MANIFEST" ]; then
+  if command -v claude >/dev/null 2>&1; then
+    echo "[bootstrap] syncing plugins from $MANIFEST"
+    while IFS= read -r raw_line || [ -n "$raw_line" ]; do
+      # strip CR, leading/trailing whitespace
+      line="${raw_line%$'\r'}"
+      line="$(echo "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      [ -z "$line" ] && continue
+      case "$line" in \#*) continue ;; esac
+
+      action="$(echo "$line" | awk '{print $1}')"
+      arg="$(echo "$line" | awk '{print $2}')"
+      [ -z "$arg" ] && continue
+
+      case "$action" in
+        market)
+          echo "[bootstrap]   market add: $arg"
+          claude plugin marketplace add "$arg" 2>&1 | sed 's/^/[bootstrap]     /' || \
+            echo "[bootstrap]     WARN: marketplace add failed: $arg (may already exist)"
+          ;;
+        plugin)
+          echo "[bootstrap]   plugin install: $arg"
+          claude plugin install "$arg" 2>&1 | sed 's/^/[bootstrap]     /' || \
+            echo "[bootstrap]     WARN: install failed: $arg (may already be installed)"
+          ;;
+        *)
+          echo "[bootstrap]   WARN: unknown manifest action '$action' — skipped"
+          ;;
+      esac
+    done < "$MANIFEST"
+    echo "[bootstrap] plugin sync done. Run 'claude plugin list' to verify."
+  else
+    echo "[bootstrap] SKIP: 'claude' CLI not found — install it first, then re-run bootstrap"
+    echo "[bootstrap]       (or run /sync-plugins inside Claude Code later)"
+  fi
 fi
 
 # ---------- 4. WSL-specific: also setup Windows side ----------

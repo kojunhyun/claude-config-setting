@@ -1,5 +1,7 @@
 # Per-machine local overrides
 settings.local.json
+paths.local.env
+.claude.json
 
 # Auth / secrets
 .credentials.json

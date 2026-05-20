@@ -122,6 +122,23 @@ $marker
 `$env:PROJECTS_DIR      = '$ProjectsDir'
 `$env:OBSIDIAN_DIR      = '$ObsidianDir'
 `$env:AGENT_TEAM_DIR    = '$AgentTeamDir'
+# Auto-source shared + machine-local env files (Bash-style KEY=value)
+foreach (`$_f in @("`$env:CLAUDE_CONFIG_DIR\paths.env","`$env:CLAUDE_CONFIG_DIR\paths.local.env")) {
+  if (Test-Path `$_f) {
+    Get-Content `$_f | ForEach-Object {
+      `$line = `$_.Trim()
+      if (`$line -and -not `$line.StartsWith('#') -and `$line.Contains('=')) {
+        `$i = `$line.IndexOf('=')
+        `$k = `$line.Substring(0, `$i).Trim()
+        `$v = `$line.Substring(`$i + 1).Trim()
+        if (`$v.Length -ge 2 -and ((`$v[0] -eq '"' -and `$v[-1] -eq '"') -or (`$v[0] -eq "'" -and `$v[-1] -eq "'"))) {
+          `$v = `$v.Substring(1, `$v.Length - 2)
+        }
+        if (`$v) { Set-Item -Path "env:`$k" -Value `$v }
+      }
+    }
+  }
+}
 $endMarker
 "@
 Add-Content $PROFILE $block
@@ -134,12 +151,95 @@ Write-Host "[bootstrap] env vars written to $PROFILE"
 [Environment]::SetEnvironmentVariable("AGENT_TEAM_DIR",   $AgentTeamDir,  "User")
 Write-Host "[bootstrap] User env vars set (Windows-wide)"
 
+# ---------- 5a-2. Auto-init paths.local.env with machine-id ----------
+$localEnv = Join-Path $ConfigDir "paths.local.env"
+if (-not (Test-Path $localEnv)) {
+  $hn = [System.Environment]::MachineName.ToLower() -replace '[^a-z0-9-]','-'
+  $us = $env:USERNAME.ToLower()             -replace '[^a-z0-9-]','-'
+  if (-not $hn) { $hn = "unknown" }
+  if (-not $us) { $us = "user" }
+  $defaultMid = "$us-$hn"
+  $localContent = @"
+# paths.local.env -- machine-specific overrides + SECRETS (NOT git tracked)
+# bootstrap 이 처음 실행할 때 hostname-user 조합으로 초기화.
+#
+# WARNING: secret token 을 담는 파일이므로 외부 노출 금지.
+
+# 이 머신의 고유 식별자
+CLAUDE_MACHINE_ID=$defaultMid
+
+# weekly 통합 leader 여부 (메인 머신만 true)
+CLAUDE_WEEKLY_LEADER=
+
+# --- Notion Integration Token (워크스페이스별 secret) -----
+# 발급 절차는 SETUP.md "Notion Integration Token 셋업" 참고.
+CLAUDE_LOG_NOTION_PERSONAL_TOKEN=
+CLAUDE_LOG_NOTION_WORK_TOKEN=
+# CLAUDE_LOG_NOTION_DEFAULT_TOKEN=
+
+# --- 머신별 경로 오버라이드 (선택) ---
+# CLAUDE_LOG_OBS_DAILY=
+# CLAUDE_LOG_OBS_WEEKLY=
+"@
+  Set-Content $localEnv $localContent -Encoding UTF8
+  Write-Host "[bootstrap] created $localEnv with CLAUDE_MACHINE_ID=$defaultMid"
+  Write-Host "[bootstrap]   tip: edit $localEnv  to rename or set CLAUDE_WEEKLY_LEADER=true on leader"
+} else {
+  Write-Host "[bootstrap] paths.local.env already exists -- preserved"
+}
+
 # ---------- 5b. Enable git hooks ----------
 if ((Test-Path (Join-Path $ConfigDir ".git")) -and (Test-Path (Join-Path $ConfigDir "hooks"))) {
   Push-Location $ConfigDir
   git config core.hooksPath hooks | Out-Null
   Pop-Location
   Write-Host "[bootstrap] git hooks enabled (core.hooksPath = hooks)"
+}
+
+# ---------- 5c. Install plugins from plugins.manifest ----------
+$manifest = Join-Path $ConfigDir "plugins.manifest"
+if (Test-Path $manifest) {
+  $claudeCmd = Get-Command claude -ErrorAction SilentlyContinue
+  if ($claudeCmd) {
+    Write-Host "[bootstrap] syncing plugins from $manifest"
+    foreach ($raw in Get-Content $manifest) {
+      $line = $raw.Trim()
+      if ([string]::IsNullOrWhiteSpace($line)) { continue }
+      if ($line.StartsWith("#")) { continue }
+
+      $parts = $line -split '\s+', 2
+      if ($parts.Count -lt 2) { continue }
+      $action = $parts[0]
+      $arg    = $parts[1].Trim()
+      if ([string]::IsNullOrWhiteSpace($arg)) { continue }
+
+      switch ($action) {
+        "market" {
+          Write-Host "[bootstrap]   market add: $arg"
+          try {
+            & claude plugin marketplace add $arg 2>&1 | ForEach-Object { Write-Host "[bootstrap]     $_" }
+          } catch {
+            Write-Host "[bootstrap]     WARN: marketplace add failed: $arg"
+          }
+        }
+        "plugin" {
+          Write-Host "[bootstrap]   plugin install: $arg"
+          try {
+            & claude plugin install $arg 2>&1 | ForEach-Object { Write-Host "[bootstrap]     $_" }
+          } catch {
+            Write-Host "[bootstrap]     WARN: install failed: $arg"
+          }
+        }
+        default {
+          Write-Host "[bootstrap]   WARN: unknown manifest action '$action' — skipped"
+        }
+      }
+    }
+    Write-Host "[bootstrap] plugin sync done. Run 'claude plugin list' to verify."
+  } else {
+    Write-Host "[bootstrap] SKIP: 'claude' CLI not found — install it first, then re-run bootstrap"
+    Write-Host "[bootstrap]       (or run /sync-plugins inside Claude Code later)"
+  }
 }
 
 # ---------- 6. Final hint ----------

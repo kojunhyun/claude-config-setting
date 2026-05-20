@@ -1,0 +1,48 @@
+# Claude Code Plugin Manifest
+# ----------------------------
+# 이 파일은 git 으로 추적되고, bootstrap 이 읽어서 자동으로
+#   `claude plugin marketplace add <source>`
+#   `claude plugin install <plugin>@<marketplace>`
+# 을 실행한다. 새 머신에서 git clone + bootstrap 만 하면 동일 플러그인 셋업.
+#
+# 문법 (한 줄 = 한 액션):
+#   market   <github-repo-or-url>       # 마켓플레이스 등록
+#   plugin   <plugin>@<marketplace>     # 플러그인 설치
+#   # ...                                # 주석
+#
+# 마켓플레이스 이름은 해당 repo 의 .claude-plugin/marketplace.json
+# 안 name 필드에서 결정된다. 정확한 이름은 README 참고.
+#
+# 비활성화: 줄 맨 앞에 # 만 붙이면 됨. 다음 bootstrap 에선 건너뜀.
+# (이미 설치된 플러그인을 제거하려면 `claude plugin uninstall <name>`)
+#
+# ============================================================
+# 성능/생산성 향상 플러그인 (Hermes / OpenClaw 계열)
+# ============================================================
+
+# --- ECC: Everything Claude Code -----------------------------
+# 60 agents + 232 skills + 75 commands + hooks + 언어별 룰.
+# Hermes operator story 포함, harness 성능 최적화에 가장 종합적.
+# 주의: 매우 많은 컴포넌트를 추가하므로 첫 설치 후 토큰 비용 확인 권장
+#       (`claude plugin details ecc`).
+market affaan-m/everything-claude-code
+plugin ecc@ecc
+
+# --- Hermes-CCC: 46 native skills (OPTIONAL) ----------------
+# 활성화하려면 아래 두 줄의 맨 앞 '#' 만 제거.
+# Core Brain / 개발 / MLOps / 리서치 / 보안 등 카테고리.
+# 위 ECC 와 일부 겹칠 수 있음 (skills). 둘 다 켜고 싶으면 OK.
+# market AlexAI-MCP/hermes-CCC
+# plugin hermes@hermes-ccc
+
+# --- ClaudeClaw: 백그라운드 데몬 + 스케줄러 (OPTIONAL) -------
+# "lightweight OpenClaw built into Claude Code".
+# 텔레그램/디스코드 메시징, cron, fallback 모델 등.
+# 데몬을 띄우므로 무거움 — 필요 시에만 켜기.
+# market moazbuilds/claudeclaw
+# plugin claudeclaw@claudeclaw
+
+# --- 추가 후보 (필요 시 직접 추가) ---------------------------
+# - rohitg00/awesome-claude-code-toolkit (135 agents 카탈로그, 무거움)
+# - Haleclipse/CCometixLine (Rust statusline, 가벼운 성능 향상)
+# - eLafo/hermes (Centauro / Ouroboros / Hefesto 등 4개 플러그인 마켓)
