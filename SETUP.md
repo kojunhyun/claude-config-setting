@@ -30,6 +30,83 @@ git commit + push  ───── push ──►  origin/main
                                    머신 B 의 Claude Code 가 새 스킬 인식
 ```
 
+### ⚠️ 멀티머신 스케줄 — 시스템 cron 권장
+
+`claude.ai /schedule` (routine) 은 **사용자 계정 기반**이라 한 머신에서 등록하면
+다른 머신에서도 트리거될 수 있다 (정책상 동작이 명확하지 않고 변경될 수 있음).
+모든 머신이 동시에 동일 routine 을 돌리면 충돌 / 자원 낭비 위험.
+
+**권장: 시스템 cron + skill 머신 가드 이중 보호**
+
+#### 1. 시스템 cron — 머신 격리 자연 보장
+
+각 머신의 OS cron 에 직접 등록. 그 머신 외에서는 절대 안 돔.
+
+```cron
+# === Mac mini (leader) — 모든 routine ===
+5   *   * * *  cd $HOME/claude-config && claude -p "/config-push"          >> ~/.claude/logs/push.log      2>&1
+30  7   * * *  cd $HOME/claude-config && claude -p "/config-sync"          >> ~/.claude/logs/sync.log      2>&1
+0   22  * * *  cd $HOME/claude-config && claude -p "/daily-log"            >> ~/.claude/logs/daily.log     2>&1
+0   23  * * *  cd $HOME/claude-config && claude -p "/daily-log-aggregate"  >> ~/.claude/logs/aggregate.log 2>&1
+30  12  * * 4  cd $HOME/claude-config && claude -p "/weekly-log"           >> ~/.claude/logs/weekly.log    2>&1
+
+# === WSL desktop / Ubuntu (non-leader) — 자기 작업만 ===
+5   *   * * *  cd $CLAUDE_CONFIG_DIR && claude -p "/config-push"  >> ~/.claude/logs/push.log  2>&1
+30  7   * * *  cd $CLAUDE_CONFIG_DIR && claude -p "/config-sync"  >> ~/.claude/logs/sync.log  2>&1
+0   22  * * *  cd $CLAUDE_CONFIG_DIR && claude -p "/daily-log"    >> ~/.claude/logs/daily.log 2>&1
+```
+
+```powershell
+# Windows Task Scheduler
+schtasks /Create /TN "ClaudePush" /SC HOURLY /MO 1 /ST 00:05 /TR "claude -p /config-push"
+schtasks /Create /TN "ClaudeSync" /SC DAILY  /ST 07:30 /TR "claude -p /config-sync"
+schtasks /Create /TN "ClaudeDaily" /SC DAILY /ST 22:00 /TR "claude -p /daily-log"
+```
+
+`crontab -e` 로 직접 편집.
+
+#### 2. Skill 머신 가드 — paths.env 정책
+
+system cron 외에 `/schedule` 또는 수동 호출까지도 차단하려면 paths.env 에:
+
+```env
+# 메인 머신만 자동 push (다른 머신 작업도 git pull 로 동기화 후 push 가능)
+SCHEDULE_PUSH_MACHINES="jhko-mac-mini"
+
+# 모든 머신이 pull (일반적, 빈값 권장)
+SCHEDULE_SYNC_MACHINES=""
+
+# 모든 머신이 자기 raw 작성 (빈값 권장)
+SCHEDULE_DAILY_MACHINES=""
+```
+
+각 skill 의 Stage 0 가 `CLAUDE_MACHINE_ID` 보고 매칭 안 되면 즉시 `exit 0`.
+**시스템 cron 으로 호출되든 `/schedule` 로 호출되든 동일 차단**.
+
+#### 3. 이중 보호의 의미
+
+| 레이어 | 차단 시점 | 보호 범위 |
+|---|---|---|
+| 시스템 cron | OS 수준 — 등록 안 된 머신은 cron 자체가 안 돔 | 가장 강력 |
+| Skill 가드 | 명령 실행 시 — `CLAUDE_MACHINE_ID` 매칭 실패 시 exit 0 | `/schedule`, 수동 호출, cron 모두 |
+
+둘 다 켜두면: 시스템 cron 에 등록한 머신만 cron 으로 실행 → skill 가드가 한 번 더 검증.
+
+#### `/schedule` 도 쓰고 싶다면?
+
+```
+/schedule create config-push "5 * * * *" run /config-push
+```
+가능. 다만 다른 머신에서도 동시 트리거될 수 있어 **skill 머신 가드** 가 필수.
+또는 머신별로 다른 이름으로 등록:
+```
+# Mac 에서만
+/schedule create config-push-mac "5 * * * *" run /config-push
+```
+이러면 routine 이름 자체가 머신 종속.
+
+---
+
 ### 양방향 자동 동기화 (권장 패턴)
 
 ```

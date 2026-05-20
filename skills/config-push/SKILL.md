@@ -31,6 +31,26 @@ when_to_use:
 5. **사용자 staging 보존** — 사용자가 의도적으로 staging 한 게 있으면 그것도 같이
    commit (사용자 의도로 간주)
 
+## Stage 0: 머신 가드 (multi-machine 안전)
+
+`/schedule` 이 모든 머신에서 트리거되더라도 paths.env 의 정책을 보고
+허용 머신에서만 실제 실행. 시스템 cron 이라면 이미 머신 격리되지만
+이중 안전망.
+
+```bash
+ALLOWED="${SCHEDULE_PUSH_MACHINES:-}"
+MID="${CLAUDE_MACHINE_ID:-$(hostname | tr '[:upper:]' '[:lower:]')}"
+if [ -n "$ALLOWED" ]; then
+  if ! echo ",$ALLOWED," | grep -q ",$MID,"; then
+    echo "[config-push] $MID 는 SCHEDULE_PUSH_MACHINES 목록에 없음 ($ALLOWED) — skip"
+    exit 0
+  fi
+fi
+```
+
+빈값(`SCHEDULE_PUSH_MACHINES=""`) 이면 모든 머신 허용 (가드 비활성).
+특정 머신만 push 자동화하려면 paths.env 에 콤마 구분 목록.
+
 ## Stage 1: 환경 점검
 
 ```bash

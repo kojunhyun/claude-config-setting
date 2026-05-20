@@ -23,6 +23,23 @@ when_to_use:
 - 기본: 인자 없음 (origin/main 받기)
 - 옵션: `/config-sync --check` — pull 안 하고 변경 사항만 미리보기
 
+## Stage 0: 머신 가드 (multi-machine 안전)
+
+`/schedule` 이 모든 머신에서 트리거되더라도 paths.env 정책으로 차단.
+
+```bash
+ALLOWED="${SCHEDULE_SYNC_MACHINES:-}"
+MID="${CLAUDE_MACHINE_ID:-$(hostname | tr '[:upper:]' '[:lower:]')}"
+if [ -n "$ALLOWED" ]; then
+  if ! echo ",$ALLOWED," | grep -q ",$MID,"; then
+    echo "[config-sync] $MID 는 SCHEDULE_SYNC_MACHINES 목록에 없음 ($ALLOWED) — skip"
+    exit 0
+  fi
+fi
+```
+
+일반적으로 모든 머신이 pull 받아야 하므로 빈값 권장.
+
 ## Stage 1: 환경 점검
 
 ```bash

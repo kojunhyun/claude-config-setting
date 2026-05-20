@@ -28,6 +28,22 @@ when_to_use:
 - 기본: 오늘 날짜 (`date +%Y-%m-%d`)
 - 옵션: 사용자가 특정 날짜 지정 (`/daily-log 2026-05-18`)
 
+## Stage 0: 머신 가드 (multi-machine 안전)
+
+```bash
+ALLOWED="${SCHEDULE_DAILY_MACHINES:-}"
+MID="${CLAUDE_MACHINE_ID:-$(hostname | tr '[:upper:]' '[:lower:]')}"
+if [ -n "$ALLOWED" ]; then
+  if ! echo ",$ALLOWED," | grep -q ",$MID,"; then
+    echo "[daily-log] $MID 는 SCHEDULE_DAILY_MACHINES 목록에 없음 — skip"
+    exit 0
+  fi
+fi
+```
+
+일반적으로 모든 머신이 자기 raw 작성해야 하므로 빈값 권장. 특정 머신만
+일일 로그 만들고 싶으면 paths.env 에 명시.
+
 ## Stage 1: 데이터 수집 (병렬)
 
 다음 소스를 **병렬 Bash** 로 수집한다:
