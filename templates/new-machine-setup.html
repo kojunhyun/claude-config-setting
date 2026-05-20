@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>새 PC Claude Config 셋업 가이드</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel-2:#1c2030; --line:#262b3a;
+    --text:#e6e8ee; --muted:#8b93a7; --accent:#8ab4ff; --accent-2:#79e3c4;
+    --warn:#ffb86b; --err:#ff7a8a; --ok:#7be09a;
+    --code-bg:#0b0d13; --code-border:#2a3045; --kbd:#23283a;
+    --mono:ui-monospace,'JetBrains Mono','Fira Code',Consolas,monospace;
+    --sans:'Pretendard','Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:var(--sans); font-size:15px; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:48px 28px 96px}
+
+  /* ---------- header ---------- */
+  header{
+    border-bottom:1px solid var(--line); padding-bottom:24px; margin-bottom:36px;
+  }
+  .tag{
+    display:inline-block; padding:3px 10px; border-radius:999px;
+    background:rgba(138,180,255,.12); color:var(--accent);
+    font-size:12px; letter-spacing:.5px; font-weight:600;
+    border:1px solid rgba(138,180,255,.25); margin-bottom:14px;
+  }
+  h1{font-size:32px; margin:0 0 8px; letter-spacing:-.02em}
+  .lede{color:var(--muted); margin:0; font-size:15px}
+
+  /* ---------- toc ---------- */
+  .toc{
+    margin:28px 0 0; padding:18px 22px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  }
+  .toc-title{font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.5px; margin-bottom:10px; text-transform:uppercase}
+  .toc ol{margin:0; padding-left:22px; columns:2; column-gap:32px; color:var(--text)}
+  .toc li{margin:4px 0; break-inside:avoid; font-size:14px}
+  .toc a{color:var(--text); text-decoration:none; border-bottom:1px dashed transparent}
+  .toc a:hover{color:var(--accent); border-bottom-color:var(--accent)}
+
+  /* ---------- section ---------- */
+  section{margin:48px 0 0}
+  h2{
+    font-size:22px; margin:0 0 4px; letter-spacing:-.015em;
+    display:flex; align-items:baseline; gap:12px;
+  }
+  h2 .step{
+    color:var(--accent); font-size:13px; font-weight:700;
+    padding:3px 8px; border-radius:6px;
+    background:rgba(138,180,255,.1); border:1px solid rgba(138,180,255,.25);
+  }
+  h2 .time{margin-left:auto; color:var(--muted); font-size:12px; font-weight:500}
+  h3{font-size:16px; margin:24px 0 10px; color:var(--text)}
+  p{margin:10px 0; color:var(--text)}
+  .muted{color:var(--muted)}
+  hr{border:none; border-top:1px solid var(--line); margin:40px 0}
+
+  /* ---------- code ---------- */
+  pre, code{font-family:var(--mono)}
+  code:not(pre code){
+    background:var(--kbd); padding:1px 6px; border-radius:5px;
+    font-size:13px; border:1px solid var(--code-border); color:#dfe5f2;
+  }
+  pre{
+    background:var(--code-bg); color:#dfe5f2;
+    padding:16px 18px; border-radius:10px; overflow-x:auto;
+    border:1px solid var(--code-border); font-size:13px; line-height:1.6;
+    position:relative;
+  }
+  pre.bash::before, pre.env::before, pre.text::before, pre.cron::before{
+    content:attr(data-label);
+    position:absolute; top:8px; right:12px;
+    font-size:11px; letter-spacing:.5px; color:var(--muted);
+    text-transform:uppercase; font-weight:600;
+  }
+  pre .c{color:#7d8aaa}
+  pre .k{color:#9cdcfe}
+  pre .s{color:#ce9178}
+  pre .v{color:#dcdcaa}
+  pre .o{color:#d4d4d4}
+
+  /* ---------- card / callout ---------- */
+  .card{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:18px 22px; margin:14px 0;
+  }
+  .callout{
+    border-left:4px solid var(--accent);
+    background:var(--panel-2); padding:14px 18px; border-radius:0 10px 10px 0;
+    margin:14px 0;
+  }
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.err{border-left-color:var(--err)}
+  .callout.ok{border-left-color:var(--ok)}
+  .callout .title{
+    font-size:12px; letter-spacing:.5px; text-transform:uppercase;
+    color:var(--muted); font-weight:700; margin-bottom:6px;
+  }
+  .callout.warn .title{color:var(--warn)}
+  .callout.err .title{color:var(--err)}
+  .callout.ok .title{color:var(--ok)}
+
+  /* ---------- table ---------- */
+  table{
+    width:100%; border-collapse:collapse; margin:14px 0;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  }
+  th, td{
+    padding:10px 14px; text-align:left; border-bottom:1px solid var(--line);
+    vertical-align:top; font-size:14px;
+  }
+  th{background:var(--panel-2); color:var(--muted); font-weight:600; font-size:12px; letter-spacing:.5px; text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  td code{font-size:12px}
+
+  /* ---------- checklist ---------- */
+  .check{list-style:none; padding:0; margin:14px 0}
+  .check li{
+    padding:8px 14px; margin:6px 0;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    display:flex; gap:10px; align-items:flex-start;
+  }
+  .check .mark{font-weight:700; flex-shrink:0; width:18px}
+  .check .ok    .mark{color:var(--ok)}
+  .check .todo  .mark{color:var(--warn)}
+  .check .ext   .mark{color:var(--accent)}
+
+  /* ---------- step badges ---------- */
+  .pill{
+    display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600;
+    background:var(--kbd); border:1px solid var(--code-border); color:var(--text);
+  }
+  .pill.acc{background:rgba(121,227,196,.1); border-color:rgba(121,227,196,.3); color:var(--accent-2)}
+  .pill.warn{background:rgba(255,184,107,.1); border-color:rgba(255,184,107,.3); color:var(--warn)}
+
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:64px; padding-top:24px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:13px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  footer a{color:var(--accent); text-decoration:none}
+  footer a:hover{text-decoration:underline}
+
+  /* responsive */
+  @media (max-width:720px){
+    .wrap{padding:32px 18px 72px}
+    .toc ol{columns:1}
+    h1{font-size:26px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="tag">CLAUDE CONFIG · MULTI-MACHINE</span>
+  <h1>새 PC Claude Config 셋업 가이드</h1>
+  <p class="lede">
+    git clone → bootstrap → paths.local.env 편집 → <code>/setup-status</code>.
+    자동화 가능한 건 다 자동, 외부 시스템 등록만 사람이.
+    실 작업 시간 약 <strong>5–10분</strong> (외부 등록 별도).
+  </p>
+  <div class="toc">
+    <div class="toc-title">목차</div>
+    <ol>
+      <li><a href="#prereq">사전 준비</a></li>
+      <li><a href="#step1">1단계 — clone + bootstrap</a></li>
+      <li><a href="#step2">2단계 — paths.local.env 편집</a></li>
+      <li><a href="#step3">3단계 — /setup-status 점검</a></li>
+      <li><a href="#step4">4단계 — 외부 시스템 등록</a></li>
+      <li><a href="#step5">5단계 — 검증</a></li>
+      <li><a href="#roles">머신 역할별 차이</a></li>
+      <li><a href="#trouble">트러블슈팅</a></li>
+    </ol>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<section id="prereq">
+  <h2><span class="step">0</span> 사전 준비</h2>
+  <table>
+    <thead>
+      <tr><th>OS</th><th>필수</th><th>권장</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="pill">WSL Ubuntu</span></td>
+        <td><code>git</code>, <code>curl</code>, <code>jq</code>, <code>node</code>(18+), <code>ssh-keygen</code></td>
+        <td>Windows 측에서 <code>D:\</code> 마운트 가능</td>
+      </tr>
+      <tr>
+        <td><span class="pill">macOS</span></td>
+        <td><code>git</code>, <code>curl</code>, <code>jq</code> (brew), <code>node</code></td>
+        <td>Xcode CLI tools, Homebrew</td>
+      </tr>
+      <tr>
+        <td><span class="pill">Linux/Ubuntu</span></td>
+        <td><code>git</code>, <code>curl</code>, <code>jq</code>, <code>node</code></td>
+        <td><code>apt install build-essential</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="title">설치 명령</div>
+<pre class="bash" data-label="bash">
+<span class="c"># macOS</span>
+brew install git node jq
+
+<span class="c"># Ubuntu / WSL</span>
+sudo apt update <span class="o">&amp;&amp;</span> sudo apt install -y git curl jq
+
+<span class="c"># node 는 NVM 권장</span>
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+nvm install --lts
+</pre>
+  </div>
+
+  <p class="muted">Obsidian vault 가 머신 간 동기화되어 있어야 일일 보고 통합이 동작합니다. iCloud / Dropbox / git 등 어떤 방식이든 OK.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="step1">
+  <h2><span class="step">1</span> Clone + bootstrap <span class="time">~2분</span></h2>
+  <p>레포 클론 후 bootstrap 한 번이면 심볼릭링크 / env / SSH 키 / 회사 폴더 / 플러그인 모두 자동.</p>
+
+<pre class="bash" data-label="bash">
+<span class="c"># WSL / Linux / macOS</span>
+git clone https://github.com/kojunhyun/claude-config-setting.git ~/claude-config
+<span class="k">cd</span> ~/claude-config
+./bootstrap.sh
+
+<span class="c"># Windows 단독</span>
+git clone https://github.com/kojunhyun/claude-config-setting.git D:\00_Claude_Config
+<span class="k">cd</span> D:\00_Claude_Config
+.\bootstrap.ps1
+</pre>
+
+  <h3>bootstrap 이 자동으로 처리하는 것</h3>
+  <ul class="check">
+    <li class="ok"><span class="mark">✅</span> <span>~/.claude/{agents,commands,skills,templates} 심볼릭링크 → 레포</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>~/.claude/CLAUDE.md 심볼릭/카피</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>~/.bashrc 또는 $PROFILE 에 env vars + paths.env auto-source 블록</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>paths.local.env 자동 생성 (MACHINE_ID, NOTION_TOKEN placeholder)</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>SSH key 자동 생성 (id_ed25519, id_ed25519_aixera) — 없을 때만</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>회사 폴더 자동 mkdir (OS별: WSL=/mnt/d/Aixera, Mac=~/Aixera, Linux=~/Aixera)</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>plugins.manifest 의 플러그인 자동 설치 (ECC 등)</span></li>
+    <li class="ok"><span class="mark">✅</span> <span>git post-merge hook 활성</span></li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="title">참고 — bootstrap.ps1 한계</div>
+    <p style="margin:0">Windows 네이티브 bootstrap.ps1 은 SSH key / 회사 폴더 자동 생성 미반영 (WSL/Mac/Linux 만). Win+WSL 환경이면 WSL 의 bootstrap.sh 가 처리하므로 영향 없음.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="step2">
+  <h2><span class="step">2</span> paths.local.env 편집 <span class="time">~2분</span></h2>
+  <p>머신별/secret 만 사람이 채움. 위치: <code>$CLAUDE_CONFIG_DIR/paths.local.env</code> (gitignored).</p>
+
+<pre class="bash" data-label="bash">
+vi $CLAUDE_CONFIG_DIR/paths.local.env
+</pre>
+
+  <h3>채워야 할 항목</h3>
+  <table>
+    <thead><tr><th>변수</th><th>값 예시</th><th>설명</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>CLAUDE_MACHINE_ID</code></td>
+        <td><code>jhko-mac-mini</code></td>
+        <td>이 머신의 고유 이름. bootstrap 이 hostname-user 로 디폴트 세팅했으니 의미있게 변경</td>
+      </tr>
+      <tr>
+        <td><code>CLAUDE_WEEKLY_LEADER</code></td>
+        <td><code>true</code> 또는 빈값</td>
+        <td>일일/주간 통합 담당. <strong>전체 머신 중 1대만</strong> <code>true</code>. Mac mini 권장</td>
+      </tr>
+      <tr>
+        <td><code>CLAUDE_LOG_NOTION_PERSONAL_TOKEN</code></td>
+        <td><code>"secret_xxx..."</code></td>
+        <td>개인 Notion integration secret (4단계에서 발급)</td>
+      </tr>
+      <tr>
+        <td><code>CLAUDE_LOG_NOTION_WORK_TOKEN</code></td>
+        <td><code>"secret_yyy..."</code></td>
+        <td>회사 Notion integration secret (4단계에서 발급)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>예시</h3>
+<pre class="env" data-label="paths.local.env">
+<span class="c"># Mac mini (leader 머신)</span>
+<span class="k">CLAUDE_MACHINE_ID</span>=<span class="v">jhko-mac-mini</span>
+<span class="k">CLAUDE_WEEKLY_LEADER</span>=<span class="v">true</span>
+<span class="k">CLAUDE_LOG_NOTION_PERSONAL_TOKEN</span>=<span class="s">"secret_abc...123"</span>
+<span class="k">CLAUDE_LOG_NOTION_WORK_TOKEN</span>=<span class="s">"secret_def...456"</span>
+</pre>
+
+<pre class="env" data-label="paths.local.env">
+<span class="c"># Ubuntu (non-leader)</span>
+<span class="k">CLAUDE_MACHINE_ID</span>=<span class="v">jhko-ubuntu-prod</span>
+<span class="k">CLAUDE_WEEKLY_LEADER</span>=
+<span class="k">CLAUDE_LOG_NOTION_PERSONAL_TOKEN</span>=<span class="s">"secret_abc...123"</span>
+<span class="k">CLAUDE_LOG_NOTION_WORK_TOKEN</span>=<span class="s">"secret_def...456"</span>
+</pre>
+
+  <p class="muted">셸 재시작 (또는 <code>source ~/.bashrc</code>) 해야 적용됨.</p>
+
+  <div class="callout">
+    <div class="title">문법 주의</div>
+    <ul style="margin:6px 0 0; padding-left:18px">
+      <li>공백 / 한글 / 특수문자 값은 반드시 <strong>따옴표</strong></li>
+      <li><code>$VAR</code> expansion 사용 금지 (PowerShell 호환 위해 literal 만)</li>
+      <li>빈 값 = SKILL fallback 사용</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="step3">
+  <h2><span class="step">3</span> /setup-status 점검 <span class="time">~30초</span></h2>
+  <p>Claude Code 안에서 한 줄. 무엇이 끝났고 무엇이 남았는지 즉시 표시.</p>
+
+<pre class="bash" data-label="bash">
+claude
+&gt; /setup-status
+</pre>
+
+  <h3>출력 예시 (셋업 중간 상태)</h3>
+<pre class="text" data-label="output">
+================================================================
+Claude Config — Setup Status (jhko-mac-mini)
+================================================================
+[paths]
+  ✅ paths.env, paths.local.env 로드됨
+
+[git identity]
+  ✅ 개인 identity (skykjh200@naver.com)
+  ✅ 회사 identity 자동 전환 (jhko@aixera.co.kr in /mnt/d/Aixera/)
+
+[ssh keys]
+  ✅ ~/.ssh/id_ed25519
+  ✅ ~/.ssh/id_ed25519_aixera
+
+[ssh config]
+  ✅ ssh config: github.com
+  ✅ ssh config: gitlab.aixera.net
+
+[external pubkey registration]
+  ⏳ PERSONAL — https://github.com/settings/keys
+        ssh-ed25519 AAAA...
+        test: ssh -T git@github.com
+  ⏳ WORK     — https://gitlab.aixera.net → SSH Keys
+        ssh-ed25519 AAAA...
+        test: ssh -T git@gitlab.aixera.net
+
+[work folder]
+  ✅ /mnt/d/Aixera
+
+[notion]
+  ⏳ personal token 없음 → paths.local.env 에 추가
+  ⏳ work     token 없음 → paths.local.env 에 추가
+
+[obsidian]
+  ✅ /mnt/d/obsidian
+
+[machine]
+  ✅ MACHINE_ID = jhko-mac-mini
+  ✅ weekly LEADER
+
+[plugins]
+  ✅ ECC 플러그인 설치/활성
+
+================================================================
+요약: 2 todo (notion tokens), 2 외부 등록 (github + gitlab 공개키)
+================================================================
+</pre>
+
+  <p>⏳ 표시 항목은 정확한 URL / 명령 / 위치까지 함께 출력합니다. 그대로 처리.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="step4">
+  <h2><span class="step">4</span> 외부 시스템 등록 (수동) <span class="time">~5–10분</span></h2>
+  <p>자동화 불가능한 외부 시스템 작업. 머신마다 한 번씩.</p>
+
+  <h3>4-1 · GitHub 공개키 등록</h3>
+<pre class="bash" data-label="bash">
+<span class="k">cat</span> ~/.ssh/id_ed25519.pub
+<span class="c"># 출력된 한 줄 복사</span>
+</pre>
+  <ul class="check">
+    <li class="ext"><span class="mark">→</span><span>브라우저: <a href="https://github.com/settings/keys" style="color:var(--accent)">https://github.com/settings/keys</a></span></li>
+    <li class="ext"><span class="mark">→</span><span><strong>New SSH key</strong> 클릭 → Title (예: <code>jhko-mac-mini</code>) → Key 칸 paste → <strong>Add SSH key</strong></span></li>
+    <li class="ext"><span class="mark">→</span><span>검증: <code>ssh -T git@github.com</code> → <code>Hi kojunhyun!</code> 같은 메시지</span></li>
+  </ul>
+
+  <h3>4-2 · GitLab (Aixera) 공개키 등록</h3>
+<pre class="bash" data-label="bash">
+<span class="k">cat</span> ~/.ssh/id_ed25519_aixera.pub
+</pre>
+  <ul class="check">
+    <li class="ext"><span class="mark">→</span><span>브라우저: <a href="https://gitlab.aixera.net" style="color:var(--accent)">https://gitlab.aixera.net</a> 로그인 → Preferences → SSH Keys</span></li>
+    <li class="ext"><span class="mark">→</span><span><strong>Add new key</strong> → Title (예: <code>jhko-mac-mini</code>) → Key 칸 paste</span></li>
+    <li class="ext"><span class="mark">→</span><span>Usage type: Authentication &amp; signing, Expiration date 비움</span></li>
+    <li class="ext"><span class="mark">→</span><span>검증: <code>ssh -T git@gitlab.aixera.net</code></span></li>
+  </ul>
+
+  <h3>4-3 · Notion Integration Token 발급 (워크스페이스마다 1회)</h3>
+  <p class="muted">개인/회사 워크스페이스 각각 한 번씩. 모든 머신에서 같은 token 재사용.</p>
+  <ul class="check">
+    <li class="ext"><span class="mark">→</span><span>브라우저: <a href="https://www.notion.so/profile/integrations" style="color:var(--accent)">https://www.notion.so/profile/integrations</a></span></li>
+    <li class="ext"><span class="mark">→</span><span><strong>New integration</strong> → Name (예: <code>Claude Logs (Personal)</code>) → Associated workspace 선택 → Type: Internal</span></li>
+    <li class="ext"><span class="mark">→</span><span>Capabilities: <strong>Read / Update / Insert content</strong> 모두 ✓</span></li>
+    <li class="ext"><span class="mark">→</span><span><strong>Save</strong> → 다음 화면에서 <strong>Internal Integration Secret 복사</strong> (한 번만 표시!)</span></li>
+    <li class="ext"><span class="mark">→</span><span>Notion 부모 페이지(예: "Claude Logs") 에서 <code>...</code> → <strong>Connections → Add → 방금 만든 integration</strong></span></li>
+    <li class="ext"><span class="mark">→</span><span>token 을 <code>paths.local.env</code> 의 <code>CLAUDE_LOG_NOTION_PERSONAL_TOKEN</code> 또는 <code>_WORK_TOKEN</code> 에 paste</span></li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="title">잘 잊는 단계</div>
+    <p style="margin:0">Notion 부모 페이지에 integration <strong>share</strong> 안 하면 401 / 404. 새 페이지에 쓰려면 그 페이지 (또는 부모) 에 integration 권한 부여 필수. 하위 페이지에는 권한 자동 상속됨.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="step5">
+  <h2><span class="step">5</span> 검증 <span class="time">~1분</span></h2>
+  <p>실제 동작 확인.</p>
+
+<pre class="bash" data-label="bash">
+<span class="c"># SSH 연결</span>
+ssh -T git@github.com
+ssh -T git@gitlab.aixera.net
+
+<span class="c"># Notion token (개인 / 회사 각각)</span>
+curl -sS https://api.notion.com/v1/users/me \
+  -H <span class="s">"Authorization: Bearer $CLAUDE_LOG_NOTION_PERSONAL_TOKEN"</span> \
+  -H <span class="s">"Notion-Version: 2022-06-28"</span>
+<span class="c"># → 200 + bot 정보면 OK</span>
+
+<span class="c"># 첫 daily-log (raw 페이지 생성, 부모 페이지 자동 생성)</span>
+claude
+&gt; /daily-log
+
+<span class="c"># 다시 setup-status — 모든 ✅ 면 끝</span>
+&gt; /setup-status
+</pre>
+
+  <h3>회사 repo 첫 clone 테스트</h3>
+<pre class="bash" data-label="bash">
+<span class="k">cd</span> /mnt/d/Aixera
+git clone git@gitlab.aixera.net:GROUP/PROJECT.git
+<span class="k">cd</span> PROJECT
+git config user.email
+<span class="c"># → jhko@aixera.co.kr 가 나와야 정상 (자동 전환 확인)</span>
+</pre>
+</section>
+
+<!-- ============================================================ -->
+<section id="roles">
+  <h2><span class="step">★</span> 머신 역할별 차이</h2>
+  <table>
+    <thead><tr><th>역할</th><th>머신 예</th><th>paths.local.env</th><th>schedule 등록</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="pill acc">LEADER</span></td>
+        <td>Mac mini</td>
+        <td><code>CLAUDE_WEEKLY_LEADER=true</code></td>
+        <td>
+          <code>/daily-log</code> (22:00) +<br>
+          <code>/daily-log-aggregate</code> (23:00) +<br>
+          <code>/weekly-log</code> (목 12:30)
+        </td>
+      </tr>
+      <tr>
+        <td><span class="pill">non-leader</span></td>
+        <td>WSL desktop, Ubuntu</td>
+        <td><code>CLAUDE_WEEKLY_LEADER=</code> (빈값)</td>
+        <td><code>/daily-log</code> 만 (22:00). aggregate / weekly 호출돼도 자동 종료.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>스케줄 등록 명령</h3>
+<pre class="bash" data-label="bash, in claude">
+<span class="c"># 모든 머신에서 (raw daily)</span>
+/schedule create daily-raw <span class="s">"0 22 * * *"</span> run /daily-log
+
+<span class="c"># Leader (Mac mini) 만 추가</span>
+/schedule create daily-aggregate <span class="s">"0 23 * * *"</span>  run /daily-log-aggregate
+/schedule create weekly-summary  <span class="s">"30 12 * * 4"</span> run /weekly-log
+</pre>
+
+  <h3>cron 으로 등록할 때 (시스템 cron)</h3>
+<pre class="cron" data-label="crontab -e">
+<span class="c"># 모든 머신</span>
+0  22 * * *  claude -p <span class="s">"/daily-log"</span>             &gt;&gt; ~/.claude/logs/daily.log     2&gt;&amp;1
+
+<span class="c"># Leader (Mac) 만 추가</span>
+0  23 * * *  claude -p <span class="s">"/daily-log-aggregate"</span>   &gt;&gt; ~/.claude/logs/aggregate.log 2&gt;&amp;1
+30 12 * * 4  claude -p <span class="s">"/weekly-log"</span>            &gt;&gt; ~/.claude/logs/weekly.log    2&gt;&amp;1
+</pre>
+</section>
+
+<!-- ============================================================ -->
+<section id="trouble">
+  <h2><span class="step">?</span> 트러블슈팅</h2>
+  <table>
+    <thead><tr><th>증상</th><th>원인</th><th>해결</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>bootstrap 후 슬래시 명령 안 보임</td>
+        <td>Claude Code 재시작 안 함</td>
+        <td><code>exit</code> 후 <code>claude</code> 다시 실행</td>
+      </tr>
+      <tr>
+        <td>paths.local.env 에 값 넣었는데 적용 안 됨</td>
+        <td>셸 rc 미 reload</td>
+        <td><code>source ~/.bashrc</code> 또는 셸 재시작</td>
+      </tr>
+      <tr>
+        <td>회사 폴더 안에서도 개인 이메일</td>
+        <td><code>~/.gitconfig</code> 의 <code>includeIf</code> 패턴 mismatch</td>
+        <td><code>git config --list --show-origin | grep email</code> 로 확인. <code>~/.gitconfig</code> 의 <code>gitdir:</code> 패턴을 실제 폴더로 수정 (끝 슬래시 필수)</td>
+      </tr>
+      <tr>
+        <td>Notion 401</td>
+        <td>token 오류 또는 만료</td>
+        <td><code>curl ... /users/me</code> 로 검증. 실패면 Notion 에서 rotate / 재발급</td>
+      </tr>
+      <tr>
+        <td>Notion 404</td>
+        <td>부모 페이지에 integration share 안 됨</td>
+        <td>해당 Notion 페이지 → <code>...</code> → Connections → Add integration</td>
+      </tr>
+      <tr>
+        <td><code>ssh -T git@gitlab.aixera.net</code> 무응답</td>
+        <td>회사 VPN 미연결 또는 사내망 외부</td>
+        <td>VPN / cloudflared / 회사 네트워크 확인</td>
+      </tr>
+      <tr>
+        <td>cron 으로 안 돌아감</td>
+        <td>cron 환경에 env vars 없음</td>
+        <td>cron 진입점에서 <code>source ~/.bashrc</code> 후 <code>claude -p ...</code></td>
+      </tr>
+      <tr>
+        <td>같은 머신에서 daily-log 가 다른 머신 분도 잡아감</td>
+        <td>잘못된 MACHINE_ID 또는 vault 미동기화</td>
+        <td><code>echo $CLAUDE_MACHINE_ID</code> 확인. Obsidian vault 가 모든 머신에서 같은 경로인지</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  <div>
+    <strong>kojunhyun/claude-config-setting</strong> ·
+    <a href="https://github.com/kojunhyun/claude-config-setting">GitHub</a>
+  </div>
+  <div>마지막 업데이트: 2026-05-20</div>
+</footer>
+
+</div>
+</body>
+</html>
