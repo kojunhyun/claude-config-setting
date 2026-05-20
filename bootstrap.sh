@@ -168,6 +168,43 @@ else
   echo "[bootstrap] paths.local.env already exists — preserved"
 fi
 
+# ---------- 3a-3. SSH key auto-gen + work folder mkdir ----------
+# paths.env / paths.local.env 의 GIT_* 변수 기반. 이미 키 있으면 그대로.
+if [ -f "$CLAUDE_CONFIG_DIR/paths.env" ]; then
+  set -a; . "$CLAUDE_CONFIG_DIR/paths.env"; set +a
+  [ -f "$LOCAL_ENV" ] && { set -a; . "$LOCAL_ENV"; set +a; }
+fi
+
+# 키 생성 함수
+gen_key_if_missing() {
+  local kname="$1" email="$2"
+  [ -z "$kname" ] && return
+  local kpath="$HOME/.ssh/$kname"
+  if [ -f "$kpath" ]; then
+    echo "[bootstrap] SSH key 이미 있음: $kpath"
+  else
+    mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+    echo "[bootstrap] SSH key 생성: $kpath (passphrase 없이)"
+    ssh-keygen -t ed25519 -C "${email:-$kname}" -f "$kpath" -N "" -q
+    echo "[bootstrap]   pub: $(cat "${kpath}.pub")"
+  fi
+}
+gen_key_if_missing "${GIT_PERSONAL_KEY_NAME:-}" "${GIT_PERSONAL_EMAIL:-}"
+gen_key_if_missing "${GIT_WORK_KEY_NAME:-}"     "${GIT_WORK_EMAIL:-}"
+
+# 회사 폴더 mkdir (OS 별 자동 감지 fallback)
+WORK_DIR="${GIT_WORK_DIR:-}"
+if [ -z "$WORK_DIR" ]; then
+  case "$OS" in
+    wsl)        WORK_DIR="/mnt/d/Aixera" ;;
+    macos|linux) WORK_DIR="$HOME/Aixera" ;;
+  esac
+fi
+if [ -n "$WORK_DIR" ] && [ ! -d "$WORK_DIR" ]; then
+  mkdir -p "$WORK_DIR"
+  echo "[bootstrap] work folder created: $WORK_DIR"
+fi
+
 # ---------- 3b. Enable git hooks (post-merge auto-sync) ----------
 if [ -d "$CLAUDE_CONFIG_DIR/.git" ] && [ -d "$CLAUDE_CONFIG_DIR/hooks" ]; then
   ( cd "$CLAUDE_CONFIG_DIR" && git config core.hooksPath hooks )

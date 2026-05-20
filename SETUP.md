@@ -6,6 +6,95 @@ Sync via git. Per-machine paths via env vars. Bootstrap scripts auto-detect OS.
 
 ---
 
+## 새 PC 셋업 — 한 곳 관리 모델
+
+새 머신에서 손대야 할 모든 항목을 `paths.env` (공통) + `paths.local.env`
+(머신별/secret) **두 파일**로 관리한다. bootstrap 이 자동 처리 + 외부 시스템
+(GitHub/GitLab/Notion 웹) 만 사람이 직접.
+
+### 처음 셋업 흐름 (요약)
+
+```bash
+# 1. clone
+git clone https://github.com/kojunhyun/claude-config-setting.git ~/claude-config
+cd ~/claude-config
+
+# 2. bootstrap (자동)
+./bootstrap.sh
+# → 심볼릭링크 + env vars + paths.local.env 자동 생성
+# → SSH key 자동 생성 (passphrase 없이, 이미 있으면 skip)
+# → 회사 폴더 mkdir (OS별 자동: WSL=/mnt/d/Aixera, Mac=~/Aixera)
+# → plugins.manifest 의 ECC 등 자동 설치
+
+# 3. paths.local.env 채우기 (사람 직접)
+vi ~/claude-config/paths.local.env
+#   - CLAUDE_MACHINE_ID 의미있게
+#   - CLAUDE_WEEKLY_LEADER=true   (Mac mini 한 대만)
+#   - CLAUDE_LOG_NOTION_PERSONAL_TOKEN / _WORK_TOKEN
+
+# 4. 셋업 상태 확인 (자동)
+source ~/.bashrc
+claude
+> /setup-status
+# → ✅ / ⏳ 체크리스트 + 남은 작업 + 정확한 명령/URL
+
+# 5. ⏳ 표시 항목들 처리 (사람 직접)
+#   - GitHub.com 공개키 등록
+#   - gitlab.aixera.net 공개키 등록
+#   - (필요 시) Notion integration token 발급
+```
+
+### Git/SSH single source of truth — paths.env
+
+```env
+# paths.env (git tracked, 모든 머신 공통)
+GIT_PERSONAL_NAME="고준현"
+GIT_PERSONAL_EMAIL="skykjh200@naver.com"
+GIT_PERSONAL_KEY_NAME="id_ed25519"
+GIT_PERSONAL_HOSTS="github.com"
+
+GIT_WORK_NAME="고준현"
+GIT_WORK_EMAIL="jhko@aixera.co.kr"
+GIT_WORK_KEY_NAME="id_ed25519_aixera"
+GIT_WORK_HOSTS="gitlab.aixera.net"
+
+GIT_WORK_DIR=    # 비우면 OS별 자동: WSL=/mnt/d/Aixera, Mac/Linux=~/Aixera
+GIT_CREDENTIAL_HELPER="store"
+```
+
+이 값들이 `/setup-status` 의 기대값 기준이 됨. 추후 새 호스트 추가 시
+콤마 구분으로 한 줄 수정 후 git push → 다른 머신에서 git pull → `/setup-status`.
+
+### 자동화 범위
+
+| 항목 | 자동 처리 | 사람 직접 |
+|---|---|---|
+| 심볼릭링크 ~/.claude/* | ✅ bootstrap | |
+| env vars 셸 rc 등록 | ✅ bootstrap | |
+| paths.local.env 초기화 | ✅ bootstrap | 토큰/머신ID 채우기 |
+| SSH key 생성 | ✅ bootstrap (없으면) | |
+| 회사 폴더 mkdir | ✅ bootstrap | |
+| 플러그인 설치 (ECC 등) | ✅ bootstrap | |
+| `~/.gitconfig` 의 user/includeIf | ❌ | ✅ 사용자가 한 번 작성 (또는 기존 유지) |
+| `~/.ssh/config` 의 host alias | ❌ | ✅ 사용자가 한 번 작성 |
+| **GitHub/GitLab 에 공개키 등록** | ❌ | ✅ 머신마다 브라우저 |
+| **Notion integration token 발급** | ❌ | ✅ 워크스페이스마다 1회 |
+| 부모 페이지 자동 생성 | ✅ 첫 daily-log 호출 시 | |
+
+> `~/.gitconfig` / `~/.ssh/config` 자동 작성을 안 하는 이유: 사용자가 기존에
+> 직접 셋팅한 항목 (다른 계정, 다른 host alias) 을 망가뜨릴 위험. 대신
+> `/setup-status` 가 무엇이 부족한지 정확히 알려주고, 그대로 복사할 수 있는
+> 명령/블록을 출력한다.
+
+### 일상 점검
+
+```
+/setup-status     # 셋업 누락 항목 즉시 표시 (셀프 진단)
+/sync-plugins     # 플러그인 manifest 변경 후 재동기화
+```
+
+---
+
 ## OS별 사용 시나리오
 
 | Case | OS | 동기화 방식 | 스크립트 |
