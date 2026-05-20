@@ -6,6 +6,109 @@ Sync via git. Per-machine paths via env vars. Bootstrap scripts auto-detect OS.
 
 ---
 
+## 머신 간 스킬/Agent 동기화 모델
+
+한 머신에서 스킬/agent/command 수정 → git push → **다른 머신들이 어떻게 받나**.
+
+### 동기화 체인
+
+```
+머신 A 에서 수정                 머신 B 에서 받기
+────────────────                 ────────────────
+edit skills/foo/SKILL.md
+git commit + push  ───── push ──►  origin/main
+                                       │
+                                       │ git pull (3가지 방법 중 하나)
+                                       ▼
+                                   $CLAUDE_CONFIG_DIR/skills/foo/SKILL.md
+                                       │ symlink
+                                       ▼
+                                   ~/.claude/skills/foo/SKILL.md
+                                       │
+                                       │ Claude Code 재시작
+                                       ▼
+                                   머신 B 의 Claude Code 가 새 스킬 인식
+```
+
+### 동기화 방법 3가지
+
+**1. 수동 `/config-sync` (가장 안전, 권장)**
+
+```
+/config-sync          # git pull + 변경 요약 + 재시작 안내
+/config-sync --check  # pull 안 하고 변경 사항만 미리보기
+```
+
+자동 안전장치:
+- 미커밋 변경 있으면 abort (lost work 방지)
+- rebase 충돌 발생 시 자동 해결 X — 사용자에게 안내
+- `plugins.manifest` 변경되면 `/sync-plugins` 권장 메시지
+
+**2. post-merge hook (자동 알림)**
+
+`git pull` 호출 시 hook 가 자동으로 변경 사항 콘솔에 출력:
+
+```
+[post-merge] config 변경 사항:
+  + skills/new-feature/SKILL.md
+  ~ skills/daily-log/SKILL.md
+  - commands/old-command.md
+
+[post-merge] 새 스킬/agent/command/hook 적용하려면 Claude Code 재시작 필요
+```
+
+수동 `git pull` 이든 `/config-sync` 든 결과로 trigger 됨.
+
+**3. 매일 자동 routine (선택)**
+
+각 머신에서 한 번만 등록:
+
+```
+/schedule create config-pull "30 7 * * *" run /config-sync
+```
+
+매일 출근 시간 전 (07:30) 자동 pull. 충돌 발생 시 cron 로그에 남고 다음번에 사용자 개입.
+
+### 무엇이 바뀌면 재시작 필요?
+
+| 변경 | 재시작 필요? |
+|---|---|
+| `skills/*` 추가/수정 | ✅ 필요 |
+| `agents/*` 추가/수정 | ✅ 필요 |
+| `commands/*` 추가/수정 | ✅ 필요 |
+| `hooks/*` 추가/수정 | ❌ 다음 git 호출 시 자동 적용 |
+| `plugins.manifest` 추가 | ✅ `/sync-plugins` 호출 + 재시작 |
+| `paths.env` / `paths.local.env` 수정 | ❌ 셸 재시작 (또는 `source ~/.bashrc`) |
+| `CLAUDE.md` 수정 | ✅ 재시작 (또는 `/memory` 재로드) |
+| `bootstrap.sh` / `.ps1` 수정 | ❌ 다음 bootstrap 호출 시 적용 |
+
+### 충돌 처리
+
+두 머신에서 동시에 수정 후 둘 다 push 시도하면:
+1. 먼저 push 한 쪽이 성공
+2. 두 번째 머신은 `git push` 실패 (non-fast-forward)
+3. 두 번째 머신에서 `/config-sync` (또는 수동 `git pull --rebase`)
+4. rebase 충돌이면 사용자가 직접 해결:
+   ```bash
+   cd $CLAUDE_CONFIG_DIR
+   # 충돌 파일 수정
+   git add <파일들>
+   git rebase --continue
+   git push
+   ```
+
+### 일일 운영 흐름 예
+
+```
+[Mac mini]  09:00  edit skills/foo + git commit + push
+[Ubuntu]   다음 날 07:30  /config-sync 자동 실행
+                          → +1 skill (foo) 알림
+                          → Claude Code 재시작 (다음 사용 시)
+[WSL]      다음 날 07:30  /config-sync 자동 실행 (동일)
+```
+
+---
+
 ## 새 PC 셋업 — 한 곳 관리 모델
 
 새 머신에서 손대야 할 모든 항목을 `paths.env` (공통) + `paths.local.env`

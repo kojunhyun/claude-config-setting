@@ -44,4 +44,29 @@ if [ "$OS" = "windows" ]; then
 fi
 
 # Mac/Linux/WSL native side — symlinks self-update, nothing to do
+
+# ---------- Change summary (B) ----------
+# Show what changed in skills / agents / commands / hooks since the previous HEAD.
+PREV_HEAD="${ORIG_HEAD:-HEAD@{1}}"
+if git rev-parse "$PREV_HEAD" >/dev/null 2>&1; then
+  changed=$(git diff --name-status "$PREV_HEAD"..HEAD -- \
+            skills/ agents/ commands/ hooks/ plugins.manifest paths.env CLAUDE.md 2>/dev/null)
+  if [ -n "$changed" ]; then
+    echo
+    echo "[post-merge] config 변경 사항:"
+    echo "$changed" | awk '{
+      flag=$1; path=$2;
+      if      (flag=="A") prefix="  + ";
+      else if (flag=="M") prefix="  ~ ";
+      else if (flag=="D") prefix="  - ";
+      else                prefix="  ? ";
+      print prefix path;
+    }'
+    echo
+    echo "[post-merge] 새 스킬/agent/command/hook 적용하려면 Claude Code 재시작 필요"
+  else
+    echo "[post-merge] skills/agents/commands 변경 없음"
+  fi
+fi
+
 echo "[post-merge] done"
