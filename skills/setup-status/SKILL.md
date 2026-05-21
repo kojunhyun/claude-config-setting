@@ -108,15 +108,19 @@ for h in "${WH[@]}"; do check_ssh_host "$h" "$GIT_WORK_KEY_NAME"; done
 # 공개키 출력 + 어디 등록해야 하는지 안내
 for tag in PERSONAL WORK; do
   KN_VAR="GIT_${tag}_KEY_NAME"; HOSTS_VAR="GIT_${tag}_HOSTS"
-  pub="$HOME/.ssh/${!KN_VAR}.pub"
+  KEY_NAME="${!KN_VAR}"
+  HOSTS="${!HOSTS_VAR}"
+  # 비활성 (HTTPS+PAT 만 쓰는 경우 등) 이면 skip
+  [ -z "$KEY_NAME" ] || [ -z "$HOSTS" ] && continue
+  pub="$HOME/.ssh/${KEY_NAME}.pub"
   [ ! -f "$pub" ] && continue
   echo
   echo "⏳ $tag 공개키 — 아래 호스트에 등록 필요 (브라우저로):"
-  for h in $(echo "${!HOSTS_VAR}" | tr ',' ' '); do
+  for h in $(echo "$HOSTS" | tr ',' ' '); do
     case "$h" in
-      github.com)         echo "    https://github.com/settings/keys" ;;
-      gitlab.aixera.net)  echo "    https://gitlab.aixera.net → User Settings → SSH Keys" ;;
-      *)                  echo "    https://$h (보통 User Settings → SSH Keys)" ;;
+      github.com)             echo "    https://github.com/settings/keys" ;;
+      gitlab.com)             echo "    https://gitlab.com → Preferences → SSH Keys" ;;
+      *)                      echo "    https://$h (User Settings → SSH Keys)" ;;
     esac
   done
   echo "    공개키:"
