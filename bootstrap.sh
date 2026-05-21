@@ -40,9 +40,9 @@ case "$OS" in
     ;;
   macos)
     DEFAULT_CONFIG="$HOME/claude-config"
-    DEFAULT_PROJECTS="$HOME/Projects"
-    DEFAULT_OBSIDIAN="$HOME/Obsidian"
-    DEFAULT_AGENT_TEAM="$HOME/Agent_Team"
+    DEFAULT_PROJECTS="$HOME/00_Projects"
+    DEFAULT_OBSIDIAN="$HOME/obsidian"
+    DEFAULT_AGENT_TEAM="$HOME/00_Agent_Team"
     SHELL_RC="$HOME/.zshrc"
     ;;
   linux)
