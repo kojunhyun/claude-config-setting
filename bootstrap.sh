@@ -205,6 +205,136 @@ if [ -n "$WORK_DIR" ] && [ ! -d "$WORK_DIR" ]; then
   echo "[bootstrap] work folder created: $WORK_DIR"
 fi
 
+# ---------- 3a-4. Auto-write ~/.gitconfig managed block ----------
+# paths.env 의 GIT_* 변수 기반 marker-block 으로 idempotent 작성.
+# 기존 사용자 셋업은 marker 밖에 있어 보존됨.
+if [ -n "${GIT_PERSONAL_NAME:-}" ] && [ -n "${GIT_PERSONAL_EMAIL:-}" ]; then
+  GITCONFIG="$HOME/.gitconfig"
+  GIT_MARK_BEGIN="# === Claude Config managed (do not edit between markers) ==="
+  GIT_MARK_END="# === /Claude Config managed ==="
+  touch "$GITCONFIG"
+  if grep -qF "$GIT_MARK_BEGIN" "$GITCONFIG"; then
+    awk -v m="$GIT_MARK_BEGIN" -v e="$GIT_MARK_END" '
+      BEGIN { skip=0 }
+      index($0, m) { skip=1; next }
+      skip && index($0, e) { skip=0; next }
+      !skip { print }
+    ' "$GITCONFIG" > "$GITCONFIG.tmp" && mv "$GITCONFIG.tmp" "$GITCONFIG"
+  fi
+  WORK_DIR_GIT="${GIT_WORK_DIR:-$WORK_DIR}"
+  {
+    printf '\n%s\n' "$GIT_MARK_BEGIN"
+    echo "[user]"
+    echo "    name = ${GIT_PERSONAL_NAME}"
+    echo "    email = ${GIT_PERSONAL_EMAIL}"
+    if [ -n "${GIT_CREDENTIAL_HELPER:-}" ]; then
+      echo "[credential]"
+      echo "    helper = ${GIT_CREDENTIAL_HELPER}"
+    fi
+    if [ -n "${GIT_WORK_EMAIL:-}" ] && [ -n "$WORK_DIR_GIT" ]; then
+      echo "[includeIf \"gitdir:${WORK_DIR_GIT}/\"]"
+      echo "    path = ~/.gitconfig-work"
+    fi
+    echo "$GIT_MARK_END"
+  } >> "$GITCONFIG"
+  echo "[bootstrap] ~/.gitconfig managed block 갱신"
+
+  if [ -n "${GIT_WORK_EMAIL:-}" ]; then
+    cat > "$HOME/.gitconfig-work" <<EOF
+# Claude Config managed — sourced via ~/.gitconfig includeIf
+# Do not edit manually; bootstrap 재실행으로 갱신.
+[user]
+    email = ${GIT_WORK_EMAIL}
+EOF
+    echo "[bootstrap] ~/.gitconfig-work 작성 (회사 email override)"
+  fi
+fi
+
+# ---------- 3a-5. Auto-write ~/.ssh/config managed block ----------
+if [ -n "${GIT_PERSONAL_HOSTS:-}${GIT_WORK_HOSTS:-}" ]; then
+  SSH_CONFIG="$HOME/.ssh/config"
+  mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
+  touch "$SSH_CONFIG"; chmod 600 "$SSH_CONFIG"
+  SSH_MARK_BEGIN="# === Claude Config managed (do not edit between markers) ==="
+  SSH_MARK_END="# === /Claude Config managed ==="
+  if grep -qF "$SSH_MARK_BEGIN" "$SSH_CONFIG"; then
+    awk -v m="$SSH_MARK_BEGIN" -v e="$SSH_MARK_END" '
+      BEGIN { skip=0 }
+      index($0, m) { skip=1; next }
+      skip && index($0, e) { skip=0; next }
+      !skip { print }
+    ' "$SSH_CONFIG" > "$SSH_CONFIG.tmp" && mv "$SSH_CONFIG.tmp" "$SSH_CONFIG"
+  fi
+  {
+    printf '\n%s\n' "$SSH_MARK_BEGIN"
+    if [ -n "${GIT_PERSONAL_HOSTS:-}" ] && [ -n "${GIT_PERSONAL_KEY_NAME:-}" ]; then
+      for h in $(echo "$GIT_PERSONAL_HOSTS" | tr ',' ' '); do
+        echo "Host $h"
+        echo "    HostName $h"
+        echo "    User git"
+        echo "    IdentityFile ~/.ssh/${GIT_PERSONAL_KEY_NAME}"
+        echo "    IdentitiesOnly yes"
+        echo
+      done
+    fi
+    if [ -n "${GIT_WORK_HOSTS:-}" ] && [ -n "${GIT_WORK_KEY_NAME:-}" ]; then
+      for h in $(echo "$GIT_WORK_HOSTS" | tr ',' ' '); do
+        echo "Host $h"
+        echo "    HostName $h"
+        echo "    User git"
+        echo "    IdentityFile ~/.ssh/${GIT_WORK_KEY_NAME}"
+        echo "    IdentitiesOnly yes"
+        echo
+      done
+    fi
+    echo "$SSH_MARK_END"
+  } >> "$SSH_CONFIG"
+  echo "[bootstrap] ~/.ssh/config managed block 갱신"
+fi
+
+# ---------- 3a-6. Auto-write crontab managed block ----------
+if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/null 2>&1; then
+  mkdir -p "$HOME/.claude/logs"
+  CRON_MARK_BEGIN="# === Claude Config managed (do not edit between markers) ==="
+  CRON_MARK_END="# === /Claude Config managed ==="
+
+  existing_cron=$(crontab -l 2>/dev/null || true)
+  filtered_cron=$(printf '%s\n' "$existing_cron" | awk -v m="$CRON_MARK_BEGIN" -v e="$CRON_MARK_END" '
+    BEGIN { skip=0 }
+    index($0, m) { skip=1; next }
+    skip && index($0, e) { skip=0; next }
+    !skip { print }
+  ')
+
+  CRON_BLOCK="
+$CRON_MARK_BEGIN
+# 매시간 :05  config push
+5 * * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/config-push\"' >> $HOME/.claude/logs/push.log 2>&1
+# 매일 07:30 config pull
+30 7 * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/config-sync\"' >> $HOME/.claude/logs/sync.log 2>&1
+# 매일 22:00 daily raw
+0 22 * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/daily-log\"' >> $HOME/.claude/logs/daily.log 2>&1"
+
+  case "${CLAUDE_WEEKLY_LEADER:-}" in
+    true|1|yes|y)
+      CRON_BLOCK="$CRON_BLOCK
+# Leader: 매일 23:00 일일 통합
+0 23 * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/daily-log-aggregate\"' >> $HOME/.claude/logs/aggregate.log 2>&1
+# Leader: 매주 목 12:30 주간 통합
+30 12 * * 4 /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/weekly-log\"' >> $HOME/.claude/logs/weekly.log 2>&1"
+      echo "[bootstrap] crontab — leader 머신용 5개 routine 등록"
+      ;;
+    *)
+      echo "[bootstrap] crontab — non-leader 3개 routine 등록"
+      ;;
+  esac
+
+  CRON_BLOCK="$CRON_BLOCK
+$CRON_MARK_END"
+
+  printf '%s\n%s\n' "$filtered_cron" "$CRON_BLOCK" | crontab -
+fi
+
 # ---------- 3b. Enable git hooks (post-merge auto-sync) ----------
 if [ -d "$CLAUDE_CONFIG_DIR/.git" ] && [ -d "$CLAUDE_CONFIG_DIR/hooks" ]; then
   ( cd "$CLAUDE_CONFIG_DIR" && git config core.hooksPath hooks )

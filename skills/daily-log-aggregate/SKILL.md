@@ -24,18 +24,30 @@ when_to_use:
 - 기본: 오늘 날짜 (`date +%Y-%m-%d`)
 - 옵션: `/daily-log-aggregate 2026-05-18` 처럼 특정 날짜 백필
 
-## Stage 0: Leader 체크 + Guard
+## Stage 0: Leader 체크 + 단일성 가드
 
 ```bash
-LEADER="${CLAUDE_WEEKLY_LEADER:-}"
-case "$LEADER" in
+LEADER_FLAG="${CLAUDE_WEEKLY_LEADER:-}"
+LEADER_ID="${LEADER_MACHINE:-}"
+MID="${CLAUDE_MACHINE_ID:-$(hostname | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-')}"
+
+# 1) paths.local.env 의 LEADER 플래그 확인
+case "$LEADER_FLAG" in
   true|1|yes|y) ;;
   *)
-    echo "[daily-log-aggregate] 이 머신은 leader 아님 — 종료"
-    echo "  paths.local.env 에 CLAUDE_WEEKLY_LEADER=true 설정 필요"
+    echo "[daily-log-aggregate] $MID 는 leader 아님 (CLAUDE_WEEKLY_LEADER 빈값) — 종료"
     exit 0
     ;;
 esac
+
+# 2) paths.env 의 LEADER_MACHINE 와 자기 MACHINE_ID 일치 검증
+#    (두 머신 모두 _LEADER=true 로 설정한 실수 방지)
+if [ -n "$LEADER_ID" ] && [ "$LEADER_ID" != "$MID" ]; then
+  echo "[daily-log-aggregate] 이 머신($MID) 은 _LEADER=true 지만 paths.env 의"
+  echo "  LEADER_MACHINE=$LEADER_ID 와 다름 — 잘못 설정 가능성 — 종료"
+  echo "  올바른 leader 머신만 LEADER 동작 (단일성 보장)"
+  exit 0
+fi
 
 DATE="${ARG_DATE:-$(date +%Y-%m-%d)}"
 ```
@@ -65,7 +77,8 @@ fi
 각 타겟 `<T>` 마다:
 
 ```bash
-TOKEN="${!CLAUDE_LOG_NOTION_${T_UPPER}_TOKEN}"
+TOKEN_VAR="CLAUDE_LOG_NOTION_${T_UPPER}_TOKEN"
+TOKEN="${!TOKEN_VAR}"
 [ -z "$TOKEN" ] && { echo "[$T] token 없음 — Notion 부분 스킵"; continue; }
 
 # 그 날짜 prefix 페이지 검색

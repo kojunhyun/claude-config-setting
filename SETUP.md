@@ -44,11 +44,11 @@ git commit + push  ───── push ──►  origin/main
 
 ```cron
 # === Mac mini (leader) — 모든 routine ===
-5   *   * * *  cd $HOME/claude-config && claude -p "/config-push"          >> ~/.claude/logs/push.log      2>&1
-30  7   * * *  cd $HOME/claude-config && claude -p "/config-sync"          >> ~/.claude/logs/sync.log      2>&1
-0   22  * * *  cd $HOME/claude-config && claude -p "/daily-log"            >> ~/.claude/logs/daily.log     2>&1
-0   23  * * *  cd $HOME/claude-config && claude -p "/daily-log-aggregate"  >> ~/.claude/logs/aggregate.log 2>&1
-30  12  * * 4  cd $HOME/claude-config && claude -p "/weekly-log"           >> ~/.claude/logs/weekly.log    2>&1
+5   *   * * *  cd $HOME/claude-config && bash -lc 'source ~/.bashrc && claude -p "/config-push"' >> ~/.claude/logs/push.log 2>&1
+30  7   * * *  cd $HOME/claude-config && bash -lc 'source ~/.bashrc && claude -p "/config-sync"' >> ~/.claude/logs/sync.log 2>&1
+0   22  * * *  cd $HOME/claude-config && bash -lc 'source ~/.bashrc && claude -p "/daily-log"' >> ~/.claude/logs/daily.log 2>&1
+0   23  * * *  cd $HOME/claude-config && bash -lc 'source ~/.bashrc && claude -p "/daily-log-aggregate"' >> ~/.claude/logs/aggregate.log 2>&1
+30  12  * * 4  cd $HOME/claude-config && bash -lc 'source ~/.bashrc && claude -p "/weekly-log"' >> ~/.claude/logs/weekly.log 2>&1
 
 # === WSL desktop / Ubuntu (non-leader) — 자기 작업만 ===
 5   *   * * *  cd $CLAUDE_CONFIG_DIR && claude -p "/config-push"  >> ~/.claude/logs/push.log  2>&1

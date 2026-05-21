@@ -23,23 +23,30 @@ when_to_use:
 - 기본: 오늘 기준 직전 7일
 - 옵션: `/weekly-log 2026-W20` 또는 `/weekly-log --since 2026-05-12 --until 2026-05-19`
 
-## Stage 0: Leader 체크 (멀티 머신)
+## Stage 0: Leader 체크 + 단일성 가드
 
 여러 머신에서 weekly 가 동시에 돌면 통합이 깨지므로 **명시적 leader 한 대만**
-실제 통합을 수행. 비리더에서 호출되면 즉시 종료.
+실제 통합. 두 머신이 모두 _LEADER=true 로 잘못 설정한 경우도 paths.env 의
+LEADER_MACHINE 으로 단일성 보장.
 
 ```bash
-LEADER="${CLAUDE_WEEKLY_LEADER:-}"
+LEADER_FLAG="${CLAUDE_WEEKLY_LEADER:-}"
+LEADER_ID="${LEADER_MACHINE:-}"
 MID="${CLAUDE_MACHINE_ID:-$(hostname | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-')}"
 
-case "$LEADER" in
+case "$LEADER_FLAG" in
   true|1|yes|y) ;;
   *)
-    echo "[weekly-log] 이 머신은 leader 아님 — 종료"
-    echo "  paths.local.env 에 CLAUDE_WEEKLY_LEADER=true 설정 필요"
+    echo "[weekly-log] $MID 는 leader 아님 (CLAUDE_WEEKLY_LEADER 빈값) — 종료"
     exit 0
     ;;
 esac
+
+if [ -n "$LEADER_ID" ] && [ "$LEADER_ID" != "$MID" ]; then
+  echo "[weekly-log] 이 머신($MID) 은 _LEADER=true 지만 paths.env 의"
+  echo "  LEADER_MACHINE=$LEADER_ID 와 다름 — 잘못 설정 가능성 — 종료"
+  exit 0
+fi
 ```
 
 ## Stage 1: 데이터 수집
