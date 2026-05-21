@@ -6,6 +6,124 @@ Sync via git. Per-machine paths via env vars. Bootstrap scripts auto-detect OS.
 
 ---
 
+## 왜 `paths.env` 와 `paths.local.env` 두 파일인가
+
+설정 파일을 두 개로 나눈 이유는 **git 의 한계 + 보안 + 머신별 차이** 세 가지.
+
+### 역할 분리
+
+| 파일 | git 추적 | 포함 | 변경 빈도 |
+|---|---|---|---|
+| `paths.env` | ✅ tracked | 공통 정책 / 이름 (모든 머신 동일) | 거의 안 바뀜 |
+| `paths.local.env` | ❌ gitignored | secret token + 머신별 ID/플래그 | 머신 셋업 시 1회 |
+
+### 통합 안 하는 이유
+
+1. **Secret 은 git 에 올라가면 안 됨** — `CLAUDE_LOG_NOTION_*_TOKEN` 같은 secret 을 paths.env (git tracked) 에 두면 GitHub 노출. git 은 파일 단위 ignore 만 가능 (라인 단위 X).
+2. **머신별로 다른 값** — `CLAUDE_MACHINE_ID`, `CLAUDE_WEEKLY_LEADER` 는 머신마다 달라야 함. 한 파일에 두고 git 공유하면 한 머신 push 가 다른 머신 값 덮음.
+3. **정책 vs 신원 분리** — paths.env 가 "조직 정책 (LEADER 가 누구인가)", paths.local.env 가 "이 머신 신원 (내가 누구인가)". 둘이 다른 차원.
+
+### 안전장치 — 정책이 신원을 검증
+
+`paths.env` 의 `LEADER_MACHINE` 값과 `paths.local.env` 의 `CLAUDE_MACHINE_ID` 가 일치하는 머신만 leader 동작. 두 머신이 모두 `CLAUDE_WEEKLY_LEADER=true` 로 잘못 설정해도 paths.env 의 LEADER_MACHINE 한 줄이 진실의 원천 — 한 머신만 실행.
+
+### 일상 운영에서 사용자가 손대는 곳
+
+| 작업 | paths.env | paths.local.env |
+|---|---|---|
+| 첫 셋업 | 거의 안 손댐 | ✅ 한 번 채움 |
+| Notion token 만료 | 안 손댐 | ✅ 갱신 |
+| 새 머신 추가 | 정책 한 줄 | ✅ 매번 |
+| 일상 운영 | 안 손댐 | 안 손댐 |
+
+→ 사용자가 자주 손대는 건 **paths.local.env 한 파일**. paths.env 는 첫 셋업 후 잊어도 됨.
+
+---
+
+## 클로드(claude.ai) 계정 변경 시 영향
+
+claude.ai 계정 자체가 바뀌어도 셋업의 **핵심은 그대로** 유지. Token + 시스템 cron 모델 덕에 계정 종속성 최소화.
+
+### 영향 받는 것 vs 안 받는 것
+
+| 항목 | 계정 무관? | 이유 |
+|---|---|---|
+| `paths.env`, `paths.local.env` | ✅ 무관 | 로컬 파일 |
+| `skills/`, `agents/`, `commands/` | ✅ 무관 | git tracked |
+| **Notion token** (paths.local.env) | ✅ **무관** | Notion REST API, claude.ai 와 별개 — 핵심 이점 |
+| SSH 키 / `~/.gitconfig` / crontab | ✅ 무관 | OS 사용자 단위 |
+| Memory (`memory/*.md`) | ✅ 무관 | 로컬 파일 |
+| **`~/.claude/.credentials.json`** | ❌ 변경 | claude.ai OAuth token — 새 계정 로그인 필요 |
+| **`claude plugin install`** | ❌ 변경 | 사용자 scope — 재설치 필요 |
+| **`/schedule` routine** | ❌ 변경 | claude.ai 계정 기반 — 새 계정에서 0개 |
+| **MCP integrations** (Notion OAuth, GitHub App 등) | ❌ 변경 | 사용자 단위. **단 우리는 Notion Token 방식이라 영향 없음** |
+
+### 시나리오 A — 같은 머신에서 다른 계정으로 전환
+
+```bash
+claude logout
+claude login              # 새 계정
+claude
+> /sync-plugins           # plugins.manifest 기반 재설치
+> /setup-status           # 검증
+```
+
+→ **5분 복구**. paths.local.env 의 Notion token 그대로 동작.
+
+### 시나리오 B — 회사용 / 개인용 계정 분리 (머신별)
+
+```
+[Mac mini]   개인 claude.ai
+[회사 PC]    회사 claude.ai
+```
+
+두 머신이 다른 claude.ai 라도 paths.env / paths.local.env / git push-pull 은 **GitHub 계정 기반**이라 claude.ai 와 무관. 동기화 정상.
+
+단, 회사 PC 의 GitHub 계정이 다르면 → 그 머신은 별도 fork 또는 sync 제외.
+
+### 시나리오 C — claude.ai 계정 폐쇄 / 재가입
+
+- `.credentials.json` 무효화 → `claude login` 새 계정
+- 플러그인 + routine 재셋업
+- **paths.local.env 의 Notion token, SSH 키, git config 모두 영향 없음**
+
+### 계정 전환 체크리스트
+
+```bash
+# 1. 새 계정 로그인
+claude login
+
+# 2. 플러그인 재설치 (paths.env 의 manifest 그대로)
+claude
+> /sync-plugins
+> /mcp                      # MCP 다시 연결 (사용 중인 것만)
+
+# 3. 검증
+> /setup-status             # 모든 항목 ✅
+
+# 4. 첫 cron 실행 모니터링
+cat ~/.claude/logs/push.log
+```
+
+### 한 머신에서 두 계정 번갈아?
+
+claude code 는 **한 번에 한 계정** 만 로그인. 번갈아 쓰려면 `claude logout && claude login` 매번. 번거로우니 **머신 단위 계정 분리** 권장 (Mac=개인, 회사 PC=회사).
+
+### 종속성 최소화 — 우리 설계의 강점
+
+| 의존성 | 우리 시스템 |
+|---|---|
+| Notion 인증 | Integration Token (계정 무관) ✅ |
+| 스케줄 | 시스템 cron (계정 무관) ✅ |
+| Git push/pull | SSH key + GitHub (claude.ai 무관) ✅ |
+| Daily log 저장 | Obsidian + Notion REST (claude.ai 무관) ✅ |
+| 플러그인 | claude.ai 의존 (재설치 5초) ⚠️ |
+| OAuth token | claude.ai 의존 (재로그인 30초) ⚠️ |
+
+→ 계정 바뀌어도 **`claude login` + `/sync-plugins` 두 단계**만 재실행하면 모든 자동화 복귀. 데이터/설정은 전부 그대로.
+
+---
+
 ## 머신 간 스킬/Agent 동기화 모델
 
 한 머신에서 스킬/agent/command 수정 → git push → **다른 머신들이 어떻게 받나**.
