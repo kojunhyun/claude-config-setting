@@ -306,22 +306,26 @@ if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/nu
     !skip { print }
   ')
 
+  # cron 환경에서 NVM 의 node PATH 가 안 잡히는 문제 해결:
+  # bash -c 안에서 명시적으로 NVM 초기화 + .bashrc source.
+  CRON_RUN='export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; [ -f \$HOME/.bashrc ] && . \$HOME/.bashrc 2>/dev/null'
+
   CRON_BLOCK="
 $CRON_MARK_BEGIN
 # 매시간 :05  config push
-5 * * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/config-push\"' >> $HOME/.claude/logs/push.log 2>&1
+5 * * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/config-push\"' >> $HOME/.claude/logs/push.log 2>&1
 # 매일 07:30 config pull
-30 7 * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/config-sync\"' >> $HOME/.claude/logs/sync.log 2>&1
+30 7 * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/config-sync\"' >> $HOME/.claude/logs/sync.log 2>&1
 # 매일 22:00 daily raw
-0 22 * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/daily-log\"' >> $HOME/.claude/logs/daily.log 2>&1"
+0 22 * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/daily-log\"' >> $HOME/.claude/logs/daily.log 2>&1"
 
   case "${CLAUDE_WEEKLY_LEADER:-}" in
     true|1|yes|y)
       CRON_BLOCK="$CRON_BLOCK
 # Leader: 매일 23:00 일일 통합
-0 23 * * * /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/daily-log-aggregate\"' >> $HOME/.claude/logs/aggregate.log 2>&1
+0 23 * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/daily-log-aggregate\"' >> $HOME/.claude/logs/aggregate.log 2>&1
 # Leader: 매주 목 12:30 주간 통합
-30 12 * * 4 /usr/bin/env bash -lc 'source ~/.bashrc && claude -p \"/weekly-log\"' >> $HOME/.claude/logs/weekly.log 2>&1"
+30 12 * * 4 /usr/bin/env bash -c '$CRON_RUN; claude -p \"/weekly-log\"' >> $HOME/.claude/logs/weekly.log 2>&1"
       echo "[bootstrap] crontab — leader 머신용 5개 routine 등록"
       ;;
     *)
