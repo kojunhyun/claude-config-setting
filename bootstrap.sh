@@ -292,9 +292,25 @@ if [ -n "${GIT_PERSONAL_HOSTS:-}${GIT_WORK_HOSTS:-}" ]; then
   echo "[bootstrap] ~/.ssh/config managed block 갱신"
 fi
 
-# ---------- 3a-6. Auto-write crontab managed block ----------
+# ---------- 3a-6. Auto-write claude-cron wrapper + crontab managed block ----------
 if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/null 2>&1; then
-  mkdir -p "$HOME/.claude/logs"
+  mkdir -p "$HOME/.claude/logs" "$HOME/.claude/bin"
+
+  # Wrapper script — cron 환경에서 NVM init + bashrc source 후 claude 호출.
+  # crontab quote escape 문제 회피 위해 wrapper 로 분리.
+  WRAPPER="$HOME/.claude/bin/claude-cron"
+  cat > "$WRAPPER" <<'WRAPPER_EOF'
+#!/usr/bin/env bash
+# Claude Config managed wrapper — DO NOT EDIT (bootstrap.sh 재실행으로 갱신)
+# cron 환경에서 NVM 의 node + claude PATH 를 명시 초기화.
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" 2>/dev/null
+exec claude "$@"
+WRAPPER_EOF
+  chmod +x "$WRAPPER"
+  echo "[bootstrap] claude-cron wrapper: $WRAPPER"
+
   CRON_MARK_BEGIN="# === Claude Config managed (do not edit between markers) ==="
   CRON_MARK_END="# === /Claude Config managed ==="
 
@@ -306,26 +322,22 @@ if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/nu
     !skip { print }
   ')
 
-  # cron 환경에서 NVM 의 node PATH 가 안 잡히는 문제 해결:
-  # bash -c 안에서 명시적으로 NVM 초기화 + .bashrc source.
-  CRON_RUN='export NVM_DIR=\"\$HOME/.nvm\"; [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"; [ -f \$HOME/.bashrc ] && . \$HOME/.bashrc 2>/dev/null'
-
   CRON_BLOCK="
 $CRON_MARK_BEGIN
 # 매시간 :05  config push
-5 * * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/config-push\"' >> $HOME/.claude/logs/push.log 2>&1
+5 * * * * $WRAPPER -p /config-push >> $HOME/.claude/logs/push.log 2>&1
 # 매일 07:30 config pull
-30 7 * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/config-sync\"' >> $HOME/.claude/logs/sync.log 2>&1
+30 7 * * * $WRAPPER -p /config-sync >> $HOME/.claude/logs/sync.log 2>&1
 # 매일 22:00 daily raw
-0 22 * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/daily-log\"' >> $HOME/.claude/logs/daily.log 2>&1"
+0 22 * * * $WRAPPER -p /daily-log >> $HOME/.claude/logs/daily.log 2>&1"
 
   case "${CLAUDE_WEEKLY_LEADER:-}" in
     true|1|yes|y)
       CRON_BLOCK="$CRON_BLOCK
 # Leader: 매일 23:00 일일 통합
-0 23 * * * /usr/bin/env bash -c '$CRON_RUN; claude -p \"/daily-log-aggregate\"' >> $HOME/.claude/logs/aggregate.log 2>&1
+0 23 * * * $WRAPPER -p /daily-log-aggregate >> $HOME/.claude/logs/aggregate.log 2>&1
 # Leader: 매주 목 12:30 주간 통합
-30 12 * * 4 /usr/bin/env bash -c '$CRON_RUN; claude -p \"/weekly-log\"' >> $HOME/.claude/logs/weekly.log 2>&1"
+30 12 * * 4 $WRAPPER -p /weekly-log >> $HOME/.claude/logs/weekly.log 2>&1"
       echo "[bootstrap] crontab — leader 머신용 5개 routine 등록"
       ;;
     *)
