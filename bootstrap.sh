@@ -39,8 +39,8 @@ case "$OS" in
     SHELL_RC="$HOME/.bashrc"
     ;;
   macos)
-    DEFAULT_CONFIG="$HOME/claude-config"
-    DEFAULT_PROJECTS="$HOME/00_Projects"
+    DEFAULT_CONFIG="$HOME/00_Project/00_Claude-Config-Setting"
+    DEFAULT_PROJECTS="$HOME/00_Project/AIXERA"
     DEFAULT_OBSIDIAN="$HOME/obsidian"
     DEFAULT_AGENT_TEAM="$HOME/00_Agent_Team"
     SHELL_RC="$HOME/.zshrc"

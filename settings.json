@@ -13,6 +13,7 @@
       }
     }
   },
+  "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "skipAutoPermissionPrompt": true
 }
