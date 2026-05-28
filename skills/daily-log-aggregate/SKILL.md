@@ -59,7 +59,7 @@ DATE="${ARG_DATE:-$(date +%Y-%m-%d)}"
 ### A. Obsidian raw 폴더 스캔
 
 ```bash
-OBS_DAILY="${CLAUDE_LOG_OBS_DAILY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude_Logs/Daily}"
+OBS_DAILY="${CLAUDE_LOG_OBS_DAILY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude-Work/Daily}"
 OBS_RAW="${CLAUDE_LOG_OBS_DAILY_RAW:-$OBS_DAILY/raw}"
 
 # 그 날짜의 모든 머신 raw 파일
@@ -167,7 +167,7 @@ FINAL_FILE="$OBS_DAILY/${DATE}.md"
 
 폴더 구조:
 ```
-Claude_Logs/Daily/
+Claude-Work/Daily/
 ├── raw/
 │   ├── 2026-05-20_jhko-wsl-desktop.md
 │   ├── 2026-05-20_jhko-mac-mini.md

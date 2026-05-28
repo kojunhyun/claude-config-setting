@@ -157,13 +157,13 @@ MID="${CLAUDE_MACHINE_ID:-$(hostname | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-
 ### Obsidian (raw 폴더)
 
 ```bash
-OBS_DAILY="${CLAUDE_LOG_OBS_DAILY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude_Logs/Daily}"
+OBS_DAILY="${CLAUDE_LOG_OBS_DAILY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude-Work/Daily}"
 OBS_RAW="${CLAUDE_LOG_OBS_DAILY_RAW:-$OBS_DAILY/raw}"
 mkdir -p "$OBS_RAW"
 # 파일 경로: $OBS_RAW/YYYY-MM-DD_<MACHINE_ID>.md
-# 예) Claude_Logs/Daily/raw/2026-05-20_jhko-wsl-desktop.md
-#     Claude_Logs/Daily/raw/2026-05-20_jhko-mac-mini.md
-#     Claude_Logs/Daily/raw/2026-05-20_jhko-ubuntu-prod.md
+# 예) Claude-Work/Daily/raw/2026-05-20_jhko-wsl-desktop.md
+#     Claude-Work/Daily/raw/2026-05-20_jhko-mac-mini.md
+#     Claude-Work/Daily/raw/2026-05-20_jhko-ubuntu-prod.md
 ```
 
 - 모든 머신이 같은 vault 공유한다는 전제 (D 드라이브/iCloud/git 등)
@@ -231,23 +231,43 @@ CT="Content-Type: application/json"
 
 #### 페이지 생성 (raw, 머신별 분리)
 
+> ⚠️ **절대 마크다운을 한 paragraph/code 블록으로 통째 넣지 말 것** — Notion 에서
+> `#`, 표, 리스트가 평문으로 깨져 보인다. 반드시 아래 변환기로 네이티브 블록화한다.
+
 ```bash
 TITLE="[raw] ${DATE} (${MID})"
-# 본문 마크다운을 Notion blocks 로 변환 (간단 변환 또는 한 paragraph 로 통째)
-BODY_JSON=$(jq -Rn --arg t "$BODY" '[{"object":"block","type":"paragraph","paragraph":{"rich_text":[{"text":{"content":$t}}]}}]')
+MD_FILE="$OBS_RAW/${DATE}_${MID}.md"   # Obsidian 단계에서 이미 쓴 raw 파일
 
-curl -sS -X POST https://api.notion.com/v1/pages \
+# 1) 마크다운(.md) -> Notion 네이티브 블록 배열로 변환
+#    (frontmatter 제거 + #/##/### heading, | | table, -,1. list, ``` code, > quote, --- divider)
+BLOCKS_FILE="$CLAUDE_CONFIG_DIR/cache/notion-blocks-$$.json"
+mkdir -p "$CLAUDE_CONFIG_DIR/cache"
+python3 "$CLAUDE_CONFIG_DIR/skills/daily-log/md_to_notion_blocks.py" "$MD_FILE" > "$BLOCKS_FILE"
+
+# 2) 첫 100블록으로 페이지 생성 (Notion children 100개/요청 제한)
+FIRST=$(jq -c '.[0:100]' "$BLOCKS_FILE")
+PAGE_ID=$(curl -sS -X POST https://api.notion.com/v1/pages \
   -H "$AUTH" -H "$NVER" -H "$CT" \
-  --data "{
-    \"parent\":{\"page_id\":\"$PARENT_ID\"},
-    \"properties\":{\"title\":{\"title\":[{\"text\":{\"content\":\"$TITLE\"}}]}},
-    \"children\": $BODY_JSON
-  }"
+  --data "$(jq -n --arg t "$TITLE" --arg p "$PARENT_ID" --argjson c "$FIRST" \
+    '{parent:{page_id:$p}, properties:{title:{title:[{text:{content:$t}}]}}, children:$c}')" \
+  | jq -r '.id')
+
+# 3) 나머지 블록을 100개씩 append
+TOTAL=$(jq 'length' "$BLOCKS_FILE"); OFF=100
+while [ "$OFF" -lt "$TOTAL" ]; do
+  CHUNK=$(jq -c ".[$OFF:$((OFF+100))]" "$BLOCKS_FILE")
+  curl -sS -X PATCH "https://api.notion.com/v1/blocks/$PAGE_ID/children" \
+    -H "$AUTH" -H "$NVER" -H "$CT" \
+    --data "$(jq -n --argjson c "$CHUNK" '{children:$c}')" >/dev/null
+  OFF=$((OFF+100))
+done
+rm -f "$BLOCKS_FILE"
+echo "notion page: $PAGE_ID ($TOTAL blocks)"
 ```
 
-> 본문 마크다운이 너무 길면 Notion 의 100 block 제한이 걸릴 수 있다. 그 경우
-> 마크다운을 청크 분할 + 추가 `PATCH /v1/blocks/{id}/children` 호출.
-> 또는 본문을 한 `code` 블록(language=markdown)으로 통째 넣어도 됨.
+> 변환기 `md_to_notion_blocks.py` 는 같은 폴더에 있다. 표는 `table` 블록, 코드펜스만
+> `code` 블록으로 변환된다. rich_text 2000자/블록 제한은 변환기가 자동 절단.
+> weekly-log 등 다른 로그 스킬도 동일 변환기를 재사용한다.
 
 #### 같은 날짜 재실행 (idempotent)
 
@@ -287,7 +307,7 @@ Obsidian 은 token 무관하게 항상 저장됨.
 대화형 호출일 때만 사용자에게 보고:
 ```
 ✅ Daily log saved
-  - Obsidian: $OBSIDIAN_DIR/Claude_Logs/Daily/2026-05-19.md
+  - Obsidian: $OBSIDIAN_DIR/Claude-Work/Daily/2026-05-19.md
   - Notion:   https://notion.so/{page-id}
 ```
 

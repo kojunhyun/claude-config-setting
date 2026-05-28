@@ -54,7 +54,7 @@ fi
 ### A. daily-log-aggregate 가 만든 final 일일 파일 7개 읽기
 
 ```bash
-OBS_DAILY="${CLAUDE_LOG_OBS_DAILY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude_Logs/Daily}"
+OBS_DAILY="${CLAUDE_LOG_OBS_DAILY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude-Work/Daily}"
 # 지난 7일 final 파일 패턴: YYYY-MM-DD.md (머신 suffix 없음 — leader 가 통합한 결과)
 for i in 0 1 2 3 4 5 6; do
   D=$(date -d "$END_DATE -$i day" +%Y-%m-%d)
@@ -170,7 +170,7 @@ tags: [claude-code, weekly]
 ### Obsidian
 
 ```bash
-OBS_WEEKLY="${CLAUDE_LOG_OBS_WEEKLY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude_Logs/Weekly}"
+OBS_WEEKLY="${CLAUDE_LOG_OBS_WEEKLY:-${OBSIDIAN_DIR:-$HOME/Obsidian}/Claude-Work/Weekly}"
 mkdir -p "$OBS_WEEKLY"
 
 # leader 만 실행 도달하므로 단순:
@@ -217,7 +217,7 @@ WEEK_NUM=$(date -d "$END_DATE" +%G-W%V)
 
 ```
 ✅ Weekly log saved (Week 2026-W20)
-  - Obsidian: $OBSIDIAN_DIR/Claude_Logs/Weekly/2026-W20.md
+  - Obsidian: $OBSIDIAN_DIR/Claude-Work/Weekly/2026-W20.md
   - Notion:   https://notion.so/{page-id}
   - Stats: 12 sessions / 5 projects / 23 commits / 3 PRs
 ```
