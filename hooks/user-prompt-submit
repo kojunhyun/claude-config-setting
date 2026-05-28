@@ -44,7 +44,10 @@ case "$CMD_TOKEN" in
       echo "telegram-slash-dispatch script not executable: $DISPATCH" >&2
       exit 0
     fi
-    nohup "$DISPATCH" "$BODY" >/dev/null 2>&1 &
+    # Pass ONLY the validated whitelist token to the dispatcher — never the
+    # full body. The dispatcher re-validates and uses tmux's literal mode,
+    # so even a compromised relay cannot inject tmux key names like C-c.
+    nohup "$DISPATCH" "$CMD_TOKEN" >/dev/null 2>&1 &
     echo "Telegram slash command '$CMD_TOKEN' dispatched to active Claude tmux pane. Original message blocked." >&2
     exit 2
     ;;

@@ -9,6 +9,25 @@ set -euo pipefail
 
 CMD="${1:?slash command required}"
 
+# Defense in depth: re-validate the argument against the SAME whitelist as
+# the hook. This script may be reused by other callers in the future, so it
+# must not trust the caller to have validated the input.
+case "$CMD" in
+  /new|/clear|/compact|/cost|/exit|/login|/logout|/config|/model|/help) ;;
+  *)
+    echo "telegram-slash-dispatch: refused — '$CMD' is not in the whitelist" >&2
+    exit 2
+    ;;
+esac
+
+# Reject whitespace, control chars, and shell/tmux metacharacters even
+# inside the whitelist (the case above already pinned $CMD to a literal
+# string, but this is belt-and-suspenders against future whitelist edits).
+if [[ "$CMD" =~ [[:space:][:cntrl:]\;\|\&\`\$\(\)\<\>\"\\\'] ]]; then
+  echo "telegram-slash-dispatch: refused — '$CMD' contains forbidden characters" >&2
+  exit 2
+fi
+
 if ! command -v tmux >/dev/null 2>&1; then
   echo "telegram-slash-dispatch: tmux not installed" >&2
   exit 1
@@ -24,5 +43,9 @@ if [[ -z "${PANE:-}" ]]; then
   exit 1
 fi
 
-tmux send-keys -t "$PANE" "$CMD" Enter
+# Use -l (literal) so tmux types $CMD character-by-character instead of
+# interpreting tmux key names like Enter / C-c / C-d. Send Enter as a
+# separate, non-literal send-keys call.
+tmux send-keys -l -t "$PANE" "$CMD"
+tmux send-keys    -t "$PANE" Enter
 echo "telegram-slash-dispatch: sent '$CMD' to pane $PANE" >&2
