@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# UserPromptSubmit hook
+#
+# Detects messages that originate from the Telegram plugin AND start with a
+# whitelisted CLI slash command, then dispatches the command directly into the
+# active Claude tmux pane via tmux send-keys and BLOCKS the original message
+# from reaching Claude (so it isn't treated as a user-text prompt).
+#
+# Stdin: JSON with .user_prompt
+# Exit 0: pass through normally
+# Exit 2: block the prompt (stderr fed back to Claude as block reason)
+
+set -euo pipefail
+
+INPUT="$(cat)"
+
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+PROMPT="$(printf '%s' "$INPUT" | jq -r '.user_prompt // .prompt // empty')"
+
+if ! grep -q '<channel source=.*telegram' <<< "$PROMPT"; then
+  exit 0
+fi
+
+BODY=$(printf '%s' "$PROMPT" | awk '
+  /<channel source=.*telegram/ {
+    line=$0
+    sub(/^.*<channel source=[^>]*>/, "", line)
+    sub(/<\/channel>.*$/, "", line)
+    if (line != "") { print line; exit }
+    in_ch=1; next
+  }
+  in_ch && /<\/channel>/ { exit }
+  in_ch && NF { print; exit }
+' | sed -E 's/[[:space:]]+$//' )
+
+CMD_TOKEN="${BODY%% *}"
+
+case "$CMD_TOKEN" in
+  /new|/clear|/compact|/cost|/exit|/login|/logout|/config|/model|/help)
+    DISPATCH="${CLAUDE_CONFIG_DIR:-$HOME/00_Project/00_Claude-Config-Setting}/scripts/telegram-slash-dispatch.sh"
+    if [[ ! -x "$DISPATCH" ]]; then
+      echo "telegram-slash-dispatch script not executable: $DISPATCH" >&2
+      exit 0
+    fi
+    nohup "$DISPATCH" "$BODY" >/dev/null 2>&1 &
+    echo "Telegram slash command '$CMD_TOKEN' dispatched to active Claude tmux pane. Original message blocked." >&2
+    exit 2
+    ;;
+  *)
+    exit 0
+    ;;
+esac
