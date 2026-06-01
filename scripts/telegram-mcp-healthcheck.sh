@@ -110,6 +110,14 @@ except: pass' "$ACCESS_FILE" 2>/dev/null || true)
   fi
 }
 
+# Is any Claude Code session even running on this host? DOWN alerts only
+# make sense if someone is there to act on /mcp; otherwise we'd spam every
+# 30 min during idle hours when the user has no CC open. Orphan cleanup
+# still runs unconditionally (stale tokens hurt the NEXT session).
+has_cc_process() {
+  ps -e -o comm= 2>/dev/null | awk '$1 == "claude" { f=1; exit } END { exit !f }'
+}
+
 # bash 3.2 (macOS default) has no mapfile — read line by line into array
 PIDS=()
 while IFS= read -r _pid; do
@@ -117,6 +125,10 @@ while IFS= read -r _pid; do
 done < <(pgrep -f "$PATTERN" 2>/dev/null || true)
 
 if [[ ${#PIDS[@]} -eq 0 ]]; then
+  if ! has_cc_process; then
+    log "no bun MCP and no Claude Code session — skipping DOWN alert"
+    exit 0
+  fi
   log "no bun MCP process detected — sending DOWN alert"
   send_alert DOWN "no process"
   exit 2
