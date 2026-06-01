@@ -123,23 +123,79 @@ attempt_tmux_recovery() {
     return 0
   fi
 
+  # Find tmux socket + Claude pane
   local uid pane sock_dir tmux_cmd
   uid=$(id -u)
-  for sock_dir in "/private/tmp/tmux-${uid}" "/tmp/tmux-${uid}"; do
-    if [[ -S "${sock_dir}/default" ]]; then
-      tmux_cmd=(tmux -S "${sock_dir}/default")
-      pane=$("${tmux_cmd[@]}" list-panes -a -F '#{pane_id}|#{pane_current_command}' 2>/dev/null \
-        | awk -F'|' '$2 ~ /^(claude(\.exe)?|node|bun|deno)$/ { print $1; exit }' || true)
-      if [[ -n "${pane:-}" ]]; then
-        "${tmux_cmd[@]}" send-keys -l -t "$pane" "/mcp" 2>/dev/null || true
-        "${tmux_cmd[@]}" send-keys    -t "$pane" Enter   2>/dev/null || true
-        echo "$now" > "$RECOVERY_FILE"
-        log "${kind}: tmux /mcp dispatched to pane ${pane} via ${sock_dir}/default"
-        return 0
-      fi
+  sock_dir=""
+  for d in "/private/tmp/tmux-${uid}" "/tmp/tmux-${uid}"; do
+    if [[ -S "${d}/default" ]]; then
+      sock_dir="$d"
+      break
     fi
   done
-  log "${kind}: no tmux Claude pane found (sockets probed)"
+  [[ -z "$sock_dir" ]] && { log "${kind}: no tmux socket found at /private/tmp or /tmp"; return 0; }
+  tmux_cmd=(tmux -S "${sock_dir}/default")
+  pane=$("${tmux_cmd[@]}" list-panes -a -F '#{pane_id}|#{pane_current_command}' 2>/dev/null \
+    | awk -F'|' '$2 ~ /^(claude(\.exe)?|node|bun|deno)$/ { print $1; exit }' || true)
+  [[ -z "$pane" ]] && { log "${kind}: no Claude tmux pane found"; return 0; }
+
+  # Step 1: Open /mcp UI
+  "${tmux_cmd[@]}" send-keys -l -t "$pane" "/mcp" 2>/dev/null || true
+  "${tmux_cmd[@]}" send-keys    -t "$pane" Enter   2>/dev/null || true
+  sleep 2
+
+  # Step 2: Verify UI opened — if CC was generating, /mcp gets dropped and
+  # the keystrokes go nowhere or land in the input prompt. Detect this BEFORE
+  # spraying navigation keys (which would corrupt the user's input line).
+  local snap
+  snap=$("${tmux_cmd[@]}" capture-pane -p -t "$pane" 2>/dev/null || true)
+  if ! grep -q "Manage MCP servers" <<<"$snap"; then
+    log "${kind}: /mcp did not open UI (CC busy/generating). Will retry next tick."
+    # No RECOVERY_FILE write → retry on next 2-min tick
+    return 0
+  fi
+
+  # Step 3: Find telegram entry + current cursor position
+  local target_line current_line
+  target_line=$(echo "$snap" | grep -n "plugin:telegram:telegram" | head -1 | cut -d: -f1)
+  current_line=$(echo "$snap" | grep -nE '^[[:space:]]*❯[[:space:]]' | head -1 | cut -d: -f1)
+  if [[ -z "$target_line" || -z "$current_line" ]]; then
+    log "${kind}: layout parse failed (target=${target_line:-?} current=${current_line:-?}). Escaping UI."
+    "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
+    return 0
+  fi
+
+  local downs=$((target_line - current_line))
+  if (( downs < 0 || downs > 30 )); then
+    log "${kind}: implausible downs=${downs}. Escaping UI."
+    "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
+    return 0
+  fi
+
+  # Step 4: Navigate down to telegram entry
+  local i
+  for ((i=0; i<downs; i++)); do
+    "${tmux_cmd[@]}" send-keys -t "$pane" Down 2>/dev/null || true
+  done
+  sleep 0.5
+
+  # Step 5: Enter on telegram → sub-menu
+  "${tmux_cmd[@]}" send-keys -t "$pane" Enter 2>/dev/null || true
+  sleep 1
+
+  # Step 6: Verify sub-menu shows Reconnect as focused option 1
+  snap=$("${tmux_cmd[@]}" capture-pane -p -t "$pane" 2>/dev/null || true)
+  if ! grep -qE '^[[:space:]]*❯[[:space:]]*1\.[[:space:]]*Reconnect' <<<"$snap"; then
+    log "${kind}: sub-menu missing focused 'Reconnect' option. Escaping."
+    "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
+    "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
+    return 0
+  fi
+
+  # Step 7: Enter on Reconnect — CC closes UI and respawns bun
+  "${tmux_cmd[@]}" send-keys -t "$pane" Enter 2>/dev/null || true
+  echo "$now" > "$RECOVERY_FILE"
+  log "${kind}: full recovery sequence sent (downs=${downs}) via ${sock_dir}/default pane ${pane}"
 }
 
 # Is any Claude Code session even running on this host? DOWN alerts only
