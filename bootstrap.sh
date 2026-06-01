@@ -307,18 +307,24 @@ if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/nu
 # has disabled subscription access" 응답을 받는 두 가지 문제를 모두 해결.
 #
 # (1) NVM 초기화: cron 의 minimal PATH 에는 NVM 으로 깐 node/claude 가
-#     없음. NVM_DIR 명시 + nvm.sh source 로 PATH 보장. wrapper 자체가
-#     NVM 을 잡아주므로 사용자의 shell rc 가 비어 있어도 동작.
+#     없음. NVM_DIR 명시 + nvm.sh source 로 PATH 보장.
 #
-# (2) bash -i (interactive) 로 subshell 호출: 대부분의 ~/.bashrc 는
-#     첫 줄에 비인터랙티브 가드(case $- in *i*) ;; *) return ;; esac)
-#     가 있어, 비인터랙티브 모드에서 NVM/PATH/OTEL/auth-relevant 등
-#     export 가 전부 건너뛴다. cron 의 claude 가 이 가드 때문에 인증
-#     체크에서 "subscription disabled" 응답을 받는 것이 WSL 에서 확인됨.
-#     bash -ic 로 강제 인터랙티브 모드 → 가드 통과 → 정상 인증.
+# (2) 인터랙티브 subshell 로 사용자 shell rc 의 모든 export 적용:
+#     대부분 rc 는 첫 줄에 비인터랙티브 가드 case $- in *i*) ;; *) return ;;
+#     를 두므로 cron 의 비인터랙티브 호출은 export 를 모두 건너뜀.
+#     그 결과 claude CLI 가 인증 분기에서 "subscription disabled" 응답을
+#     받음. -ic 로 강제 인터랙티브 → 가드 통과 → 정상 인증.
+#
+#     OS 별 사용자 shell:
+#     - macOS: zsh 사용 (~/.zshrc 에 env exports) → zsh -ic
+#     - Linux/WSL: bash 사용 (~/.bashrc 에 env exports) → bash -ic
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-exec bash -ic 'claude "$@"' bash "$@"
+if [ "$(uname)" = "Darwin" ] && command -v zsh >/dev/null 2>&1; then
+  exec zsh -ic 'claude "$@"' zsh "$@"
+else
+  exec bash -ic 'claude "$@"' bash "$@"
+fi
 WRAPPER_EOF
   chmod +x "$WRAPPER"
   echo "[bootstrap] claude-cron wrapper: $WRAPPER"
