@@ -19,21 +19,33 @@
 # the original file is kept next to the patched version.
 set -euo pipefail
 
-PLUGIN_BASE="$HOME/.claude/plugins/cache/claude-plugins-official/telegram"
-SRC=""
-if [ -d "$PLUGIN_BASE" ]; then
-  for v in "$PLUGIN_BASE"/0.0.* ; do
-    if [ -f "$v/server.ts" ]; then
-      SRC="$v/server.ts"
-      break
-    fi
-  done
-fi
+# Patch BOTH plugin caches: the canonical $HOME/.claude/plugins/cache and
+# the config-repo's plugins/cache/. Claude Code resolves CLAUDE_PLUGIN_ROOT
+# to one or the other depending on how it was launched; we observed it
+# choosing the config-repo path in interactive sessions. Patch all matches;
+# idempotent markers prevent double-application.
+PLUGIN_BASES=(
+  "$HOME/.claude/plugins/cache/claude-plugins-official/telegram"
+  "${CLAUDE_CONFIG_DIR:-$HOME/00_Project/00_Claude-Config-Setting}/plugins/cache/claude-plugins-official/telegram"
+)
+SOURCES=()
+for base in "${PLUGIN_BASES[@]}"; do
+  if [ -d "$base" ]; then
+    for v in "$base"/0.0.* ; do
+      if [ -f "$v/server.ts" ]; then
+        SOURCES+=("$v/server.ts")
+      fi
+    done
+  fi
+done
 
-if [ -z "$SRC" ]; then
-  echo "[patch-telegram] no telegram plugin server.ts found under $PLUGIN_BASE — skipping"
+if [ "${#SOURCES[@]}" -eq 0 ]; then
+  echo "[patch-telegram] no telegram plugin server.ts found in any base — skipping"
   exit 0
 fi
+
+for SRC in "${SOURCES[@]}"; do
+echo "[patch-telegram] === target: $SRC ==="
 
 BACKUP_TAKEN=0
 take_backup_once() {
@@ -143,3 +155,5 @@ with open(path, 'w') as f:
 sys.stderr.write("[patch-telegram] v2 (stale killer) applied\n")
 PYTHON
 fi
+
+done  # end for SRC in SOURCES
