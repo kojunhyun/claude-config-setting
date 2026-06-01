@@ -409,6 +409,15 @@ $HC_MARK_END"
   fi
 fi
 
+# ---------- 3a-8. Telegram plugin watchdog patch (less aggressive shutdown) ----------
+if [ "${BOOTSTRAP_TELEGRAM_PATCH:-true}" = "true" ]; then
+  PATCH_SCRIPT="$CLAUDE_CONFIG_DIR/scripts/patch-telegram-watchdog.sh"
+  if [ -x "$PATCH_SCRIPT" ]; then
+    "$PATCH_SCRIPT" 2>&1 | sed 's/^/[bootstrap] /' || \
+      echo "[bootstrap] WARN: telegram watchdog patch failed (non-fatal)"
+  fi
+fi
+
 # ---------- 3b. Enable git hooks (post-merge auto-sync) ----------
 if [ -d "$CLAUDE_CONFIG_DIR/.git" ] && [ -d "$CLAUDE_CONFIG_DIR/hooks" ]; then
   ( cd "$CLAUDE_CONFIG_DIR" && git config core.hooksPath hooks )
