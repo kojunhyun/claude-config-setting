@@ -26,6 +26,7 @@ ide/
 # Hook state
 .caveman-active
 .last-cleanup
+.last-update-result.json
 policy-limits.json
 mcp-needs-auth-cache.json
 remote-settings.json
