@@ -24,10 +24,12 @@ LOG_DIR="${HOME}/.claude/logs"
 STATE_DIR="${HOME}/.claude/state"
 LOG_FILE="${LOG_DIR}/telegram-mcp-healthcheck.log"
 STATE_FILE="${STATE_DIR}/telegram-mcp-last-alert"
+RECOVERY_FILE="${STATE_DIR}/telegram-mcp-last-recovery"
 ENV_FILE="${HOME}/.claude/channels/telegram/.env"
 ACCESS_FILE="${HOME}/.claude/channels/telegram/access.json"
 PID_FILE="${HOME}/.claude/channels/telegram/bot.pid"
-SUPPRESS_SEC=1800   # one alert per 30 min while still down
+SUPPRESS_SEC=1800       # one Telegram alert per 30 min while still down
+RECOVERY_SUPPRESS_SEC=300  # one /mcp dispatch per 5 min (avoid queueing)
 
 PATTERN='telegram/0\.[0-9]+\.[0-9]+.*server\.ts|--cwd[= ].*telegram/0\.[0-9]+\.[0-9]+'
 
@@ -98,16 +100,46 @@ except: pass' "$ACCESS_FILE" 2>/dev/null || true)
     log "${kind}: direct API skipped (token=${TELEGRAM_BOT_TOKEN:+present} chat_id=${chat_id:-empty})"
   fi
 
-  if command -v tmux >/dev/null 2>&1; then
-    local pane
-    pane=$(tmux list-panes -a -F '#{pane_id}|#{pane_current_command}' 2>/dev/null \
-      | awk -F'|' '$2 ~ /^(claude|node|bun|deno)$/ { print $1; exit }' || true)
-    if [[ -n "${pane:-}" ]]; then
-      tmux send-keys -l -t "$pane" "/mcp" 2>/dev/null || true
-      tmux send-keys    -t "$pane" Enter   2>/dev/null || true
-      log "${kind}: tmux /mcp dispatched to pane ${pane}"
+}
+
+# Send /mcp into the active Claude pane via tmux. Independent of alert
+# suppression so we still attempt recovery every 5 min during outage,
+# while the Telegram alert itself only fires every 30 min.
+attempt_tmux_recovery() {
+  local kind="$1"
+  local now
+  now=$(date +%s)
+
+  if [[ -f "$RECOVERY_FILE" ]]; then
+    local last
+    last=$(cat "$RECOVERY_FILE" 2>/dev/null || echo 0)
+    if (( now - last < RECOVERY_SUPPRESS_SEC )); then
+      log "${kind}: tmux /mcp suppressed (last attempt ${last})"
+      return 0
     fi
   fi
+
+  if ! command -v tmux >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local uid pane sock_dir tmux_cmd
+  uid=$(id -u)
+  for sock_dir in "/private/tmp/tmux-${uid}" "/tmp/tmux-${uid}"; do
+    if [[ -S "${sock_dir}/default" ]]; then
+      tmux_cmd=(tmux -S "${sock_dir}/default")
+      pane=$("${tmux_cmd[@]}" list-panes -a -F '#{pane_id}|#{pane_current_command}' 2>/dev/null \
+        | awk -F'|' '$2 ~ /^(claude(\.exe)?|node|bun|deno)$/ { print $1; exit }' || true)
+      if [[ -n "${pane:-}" ]]; then
+        "${tmux_cmd[@]}" send-keys -l -t "$pane" "/mcp" 2>/dev/null || true
+        "${tmux_cmd[@]}" send-keys    -t "$pane" Enter   2>/dev/null || true
+        echo "$now" > "$RECOVERY_FILE"
+        log "${kind}: tmux /mcp dispatched to pane ${pane} via ${sock_dir}/default"
+        return 0
+      fi
+    fi
+  done
+  log "${kind}: no tmux Claude pane found (sockets probed)"
 }
 
 # Is any Claude Code session even running on this host? DOWN alerts only
@@ -130,6 +162,7 @@ if [[ ${#PIDS[@]} -eq 0 ]]; then
     exit 0
   fi
   log "no bun MCP process detected — sending DOWN alert"
+  attempt_tmux_recovery DOWN
   send_alert DOWN "no process"
   exit 2
 fi
@@ -159,6 +192,7 @@ if [[ ${#ORPHANS[@]} -gt 0 ]]; then
     fi
   fi
   detail="killed PID(s): ${ORPHANS[*]}"
+  attempt_tmux_recovery ORPHAN_CLEANED
   send_alert ORPHAN_CLEANED "$detail"
   exit 2
 fi
@@ -167,4 +201,6 @@ if [[ -f "$STATE_FILE" ]]; then
   rm -f "$STATE_FILE"
   log "recovered — clearing alert state (children: ${CHILDREN[*]})"
 fi
+# Healthy: clear recovery suppression so next outage tries /mcp immediately
+rm -f "$RECOVERY_FILE" 2>/dev/null
 exit 0
