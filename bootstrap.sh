@@ -302,11 +302,23 @@ if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/nu
   cat > "$WRAPPER" <<'WRAPPER_EOF'
 #!/usr/bin/env bash
 # Claude Config managed wrapper — DO NOT EDIT (bootstrap.sh 재실행으로 갱신)
-# cron 환경에서 NVM 의 node + claude PATH 를 명시 초기화.
+#
+# cron/launchd 환경에서 claude CLI 가 (1) PATH 에 없거나, (2) "organization
+# has disabled subscription access" 응답을 받는 두 가지 문제를 모두 해결.
+#
+# (1) NVM 초기화: cron 의 minimal PATH 에는 NVM 으로 깐 node/claude 가
+#     없음. NVM_DIR 명시 + nvm.sh source 로 PATH 보장. wrapper 자체가
+#     NVM 을 잡아주므로 사용자의 shell rc 가 비어 있어도 동작.
+#
+# (2) bash -i (interactive) 로 subshell 호출: 대부분의 ~/.bashrc 는
+#     첫 줄에 비인터랙티브 가드(case $- in *i*) ;; *) return ;; esac)
+#     가 있어, 비인터랙티브 모드에서 NVM/PATH/OTEL/auth-relevant 등
+#     export 가 전부 건너뛴다. cron 의 claude 가 이 가드 때문에 인증
+#     체크에서 "subscription disabled" 응답을 받는 것이 WSL 에서 확인됨.
+#     bash -ic 로 강제 인터랙티브 모드 → 가드 통과 → 정상 인증.
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-[ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" 2>/dev/null
-exec claude "$@"
+exec bash -ic 'claude "$@"' bash "$@"
 WRAPPER_EOF
   chmod +x "$WRAPPER"
   echo "[bootstrap] claude-cron wrapper: $WRAPPER"
