@@ -18,6 +18,7 @@ shell-snapshots/
 projects/
 debug/
 paste-cache/
+image-cache/
 channels/
 tasks/
 plugins/
