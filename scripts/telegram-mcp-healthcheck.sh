@@ -72,8 +72,17 @@ send_alert() {
       ;;
   esac
 
-  if [[ -r "$ACCESS_FILE" ]] && command -v jq >/dev/null 2>&1; then
-    chat_id=$(jq -r '.allowFrom[0] // empty' "$ACCESS_FILE" 2>/dev/null || true)
+  if [[ -r "$ACCESS_FILE" ]]; then
+    if command -v jq >/dev/null 2>&1; then
+      chat_id=$(jq -r '.allowFrom[0] // empty' "$ACCESS_FILE" 2>/dev/null || true)
+    elif command -v python3 >/dev/null 2>&1; then
+      chat_id=$(python3 -c 'import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    a=d.get("allowFrom",[])
+    print(a[0] if a else "")
+except: pass' "$ACCESS_FILE" 2>/dev/null || true)
+    fi
   fi
 
   if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "$chat_id" ]]; then
