@@ -369,6 +369,46 @@ $CRON_MARK_END"
   printf '%s\n%s\n' "$filtered_cron" "$CRON_BLOCK" | crontab -
 fi
 
+# ---------- 3a-7. Telegram MCP healthcheck scheduler (2min interval) ----------
+if [ "${BOOTSTRAP_TELEGRAM_HEALTHCHECK:-true}" = "true" ]; then
+  HEALTH_SCRIPT="$CLAUDE_CONFIG_DIR/scripts/telegram-mcp-healthcheck.sh"
+  if [ -x "$HEALTH_SCRIPT" ]; then
+    case "$(uname)" in
+      Darwin)
+        # macOS: install launchd plist (substitute placeholders)
+        PLIST_SRC="$CLAUDE_CONFIG_DIR/launchd/com.claude.telegram-mcp-healthcheck.plist"
+        PLIST_DST="$HOME/Library/LaunchAgents/com.claude.telegram-mcp-healthcheck.plist"
+        if [ -f "$PLIST_SRC" ]; then
+          mkdir -p "$HOME/Library/LaunchAgents"
+          sed -e "s|__HOME__|$HOME|g" -e "s|__SCRIPT__|$HEALTH_SCRIPT|g" "$PLIST_SRC" > "$PLIST_DST"
+          launchctl unload "$PLIST_DST" 2>/dev/null || true
+          launchctl load "$PLIST_DST" 2>/dev/null && \
+            echo "[bootstrap] launchd — telegram MCP healthcheck loaded (120s interval)"
+        fi
+        ;;
+      Linux)
+        # Linux/WSL: append crontab entry with its own begin/end markers so
+        # this block is idempotent independently of the main routine block.
+        HC_MARK_BEGIN="# === Claude Config managed: telegram healthcheck ==="
+        HC_MARK_END="# === /Claude Config managed: telegram healthcheck ==="
+        existing_hc=$(crontab -l 2>/dev/null || true)
+        filtered_hc=$(printf '%s\n' "$existing_hc" | awk -v m="$HC_MARK_BEGIN" -v e="$HC_MARK_END" '
+          BEGIN { skip=0 }
+          index($0, m) { skip=1; next }
+          skip && index($0, e) { skip=0; next }
+          !skip { print }
+        ')
+        HC_BLOCK="
+$HC_MARK_BEGIN
+*/2 * * * * $HEALTH_SCRIPT >/dev/null 2>&1
+$HC_MARK_END"
+        printf '%s\n%s\n' "$filtered_hc" "$HC_BLOCK" | crontab -
+        echo "[bootstrap] crontab — telegram MCP healthcheck 등록 (*/2 * * * *)"
+        ;;
+    esac
+  fi
+fi
+
 # ---------- 3b. Enable git hooks (post-merge auto-sync) ----------
 if [ -d "$CLAUDE_CONFIG_DIR/.git" ] && [ -d "$CLAUDE_CONFIG_DIR/hooks" ]; then
   ( cd "$CLAUDE_CONFIG_DIR" && git config core.hooksPath hooks )
