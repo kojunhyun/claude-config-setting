@@ -2,6 +2,19 @@
   "permissions": {
     "defaultMode": "auto"
   },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_CONFIG_DIR/hooks/user-prompt-submit"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "ecc@ecc": true
   },
@@ -16,17 +29,5 @@
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "skipAutoPermissionPrompt": true,
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_CONFIG_DIR/hooks/user-prompt-submit"
-          }
-        ]
-      }
-    ]
-  }
+  "model": "claude-fable-5[1m]"
 }
