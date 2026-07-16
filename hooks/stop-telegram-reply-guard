@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Stop hook — Telegram reply enforcement.
+#
+# Problem: the Telegram bridge only delivers messages that go through the
+# `reply` tool. Plain transcript output NEVER reaches the user. So any turn
+# that was started by a Telegram message but ends without a reply tool call
+# looks to the owner like "답변이 안 옴". This hook catches that.
+#
+# Logic:
+#   1. Read the transcript.
+#   2. Find the LAST user message that carries a `<channel source=...telegram>`
+#      tag (i.e. the current Telegram-driven prompt).
+#   3. If none → not a Telegram turn → allow stop (exit 0).
+#   4. If there IS a telegram `reply` tool_use after that prompt → allow stop.
+#   5. Otherwise BLOCK the stop (exit 2) and tell Claude to actually reply.
+#
+# Safety: a per-turn counter (keyed by the prompt's uuid) blocks at most twice,
+# so a genuinely-down MCP — where reply is impossible — can never trap the
+# session in an infinite stop loop. Any parse error fails OPEN (exit 0).
+set -euo pipefail
+
+INPUT="$(cat)"
+command -v jq >/dev/null 2>&1 || exit 0
+
+TRANSCRIPT="$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)"
+[[ -n "$TRANSCRIPT" && -r "$TRANSCRIPT" ]] || exit 0
+
+RESULT="$(jq -s -r '
+  . as $all
+  | ([ range(0; ($all|length)) as $i
+       | ($all[$i]) as $m
+       | select(($m|type)=="object" and $m.type=="user")
+       # Exclude tool_result entries (Claude Code stores them as type:"user").
+       # A real inbound prompt has string content or an array with no tool_result;
+       # without this, file edits/outputs that merely QUOTE the channel marker
+       # (e.g. this hook or memory docs) get mistaken for a Telegram prompt.
+       | select(([ ($m.message.content // []) | if type=="array" then .[] else empty end
+                   | select((.type? // "")=="tool_result") ] | length) == 0)
+       | select(($m.message.content | tostring) | test("<channel source=[^>]*telegram"))
+       | $i ] | last) as $tg
+  | if $tg == null then "SKIP"
+    else
+      ( [ range(($tg+1); ($all|length)) as $j
+          | select($all[$j].type=="assistant")
+          | ($all[$j].message.content // [])[]
+          | select((.type? // "")=="tool_use")
+          | (.name // "")
+          | select(test("telegram__reply$")) ] | length) as $replies
+      | ($all[$tg].uuid // "nouuid") as $turnkey
+      | if $replies > 0 then "OK" else "BLOCK " + $turnkey end
+    end
+' "$TRANSCRIPT" 2>/dev/null || echo "SKIP")"
+
+# --- debug capture: one append-only line per invocation, for tuning ---
+{
+  printf '%s path=%s readable=%s lines=%s result=%s\n' \
+    "$(date -Iseconds 2>/dev/null || date)" \
+    "${TRANSCRIPT:-<none>}" \
+    "$([[ -r "$TRANSCRIPT" ]] && echo yes || echo no)" \
+    "$([[ -r "$TRANSCRIPT" ]] && wc -l < "$TRANSCRIPT" 2>/dev/null | tr -d ' ' || echo 0)" \
+    "${RESULT//$'\n'/ }"
+} >> "${HOME}/.claude/logs/stop-telegram-reply-guard.debug.log" 2>/dev/null || true
+
+case "$RESULT" in
+  SKIP|OK|"") exit 0 ;;
+esac
+
+TURNKEY="${RESULT#BLOCK }"
+STATE_DIR="${HOME}/.claude/state"
+mkdir -p "$STATE_DIR"
+GUARD="${STATE_DIR}/telegram-stop-guard"
+
+prev_key=""; prev_n=0
+if [[ -r "$GUARD" ]]; then
+  read -r prev_key prev_n < "$GUARD" 2>/dev/null || true
+fi
+[[ "$prev_n" =~ ^[0-9]+$ ]] || prev_n=0
+if [[ "$prev_key" == "$TURNKEY" ]]; then
+  n=$((prev_n + 1))
+else
+  n=1
+fi
+printf '%s %s\n' "$TURNKEY" "$n" > "$GUARD"
+
+# Block at most twice for the same prompt, then give up so the session is
+# never trapped when the MCP is genuinely down.
+if (( n > 2 )); then
+  exit 0
+fi
+
+echo "이 턴은 Telegram 채널 메시지에서 시작됐는데 아직 reply를 보내지 않았습니다. 트랜스크립트 출력은 사용자에게 도달하지 않습니다 — 지금 mcp__plugin_telegram_telegram__reply 로 chat_id를 넣어 답장하세요. (MCP가 죽어 reply가 정말 불가능하면 그대로 종료해도 됩니다.)" >&2
+exit 2
