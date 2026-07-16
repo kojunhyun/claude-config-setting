@@ -54,9 +54,15 @@ fi
 TODAY="${TARGET_DATE:-$(date +%Y-%m-%d)}"
 PROJECTS_BASE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
 
+# 다음날 날짜 계산 — GNU date(-d) 우선, macOS BSD date(-v) fallback.
+# ⚠️ macOS BSD find 는 -newermt "$TODAY +1 day" 의 상대 날짜 문법을 못 읽고
+#    조용히 빈 결과를 내므로 반드시 NEXT 를 미리 계산해서 넘길 것.
+NEXT=$(date -d "$TODAY +1 day" +%Y-%m-%d 2>/dev/null \
+    || date -j -v+1d -f %Y-%m-%d "$TODAY" +%Y-%m-%d)
+
 # 오늘 수정된 세션 jsonl 파일들
 find "$PROJECTS_BASE" -name "*.jsonl" -newermt "$TODAY" \
-     ! -newermt "$TODAY +1 day" 2>/dev/null
+     ! -newermt "$NEXT" 2>/dev/null
 ```
 
 각 파일에 대해:

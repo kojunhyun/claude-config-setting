@@ -39,3 +39,6 @@ Thumbs.db
 
 # Claude Code runtime telemetry junk (machine-local, not config)
 telemetry/
+
+# security-guidance plugin runtime state (machine-local, 1.5k+ session files)
+security/
