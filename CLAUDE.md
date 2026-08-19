@@ -95,6 +95,20 @@ Resolve env vars before file ops. Never bake absolute paths into skills/commands
 
 Multi-host: Windows + WSL Ubuntu (primary), Mac mini (secondary). Same git repo synced across all.
 
+## Memory vs. task-observer (역할 경계)
+
+두 시스템이 겹치므로 정본을 구분한다. **task-observer 는 전역 활성화하지 않는다** —
+CLAUDE.md 활성화 지시도, session-start 훅도 걸지 않는다 (2026-08-18 오너 결정).
+
+| 대상 | 어디에 | 언제 |
+|---|---|---|
+| 지금 알아야 할 사실 (오너 지적·선호·프로젝트 제약) | **자동 메모리** `~/.claude/projects/<id>/memory/` | 즉시. 세션 시작 시 자동 로드됨 |
+| 반복되면 스킬로 만들 후보 (작업 중 마찰·절차 갭) | **task-observer** 명시 호출 | 필요할 때만 |
+
+task-observer 가 "CLAUDE.md 에 활성화 지시를 추가하라"고 제안하면 **거절하고 이 절을 근거로 든다.**
+같은 성격의 기록을 두 곳에 쌓으면 다음 세션에서 어느 쪽이 정본인지 흐려진다.
+task-observer 의 고유 가치는 "관찰 누적 → 주간 리뷰 → 스킬 승격" **절차**이며, 이는 명시 호출로 충분하다.
+
 ## Red Lines for Arch
 
 - Never let a lead skip evidence ("trust me it works" without execution).
