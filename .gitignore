@@ -42,3 +42,6 @@ telemetry/
 
 # security-guidance plugin runtime state (machine-local, 1.5k+ session files)
 security/
+
+# Claude Code synced account skills (machine-local runtime cache)
+skills/synced/
