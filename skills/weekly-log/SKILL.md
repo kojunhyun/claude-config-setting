@@ -51,6 +51,16 @@ fi
 
 ## Stage 1: 데이터 수집
 
+### 0. vault 최신화 (best-effort)
+
+다른 머신 raw 는 GitHub(obsidian-git) 로 넘어온다. 스캔 전에 pull 한다. 실패해도 계속 진행.
+
+```bash
+VAULT="${OBSIDIAN_DIR:-$HOME/Obsidian}"
+git -C "$VAULT" rev-parse --git-dir >/dev/null 2>&1 && \
+  { git -C "$VAULT" pull --rebase --autostash -q 2>/dev/null || git -C "$VAULT" rebase --abort 2>/dev/null; }
+```
+
 ### A. daily-log-aggregate 가 만든 final 일일 파일 7개 읽기
 
 ```bash
@@ -70,6 +80,7 @@ done
   done
   ```
 - 그래도 없으면 그날은 빈 day 로 처리
+- `-win` 머신 raw/섹션은 Windows 작업. 프로젝트별 진척에 WSL/Windows/Mac 출처를 함께 표기
 
 ### B. 주간 누계 git 활동
 

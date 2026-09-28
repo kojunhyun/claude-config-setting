@@ -44,6 +44,41 @@ fi
 일반적으로 모든 머신이 자기 raw 작성해야 하므로 빈값 권장. 특정 머신만
 일일 로그 만들고 싶으면 paths.env 에 명시.
 
+## Stage 0.5: 추가 세션 소스 (같은 PC 의 다른 OS — 예: WSL 호스트의 Windows)
+
+한 PC 에서 WSL 과 Windows 네이티브 Claude Code 를 같이 쓰면 세션 폴더가 둘이다.
+`CLAUDE_LOG_EXTRA_SOURCES` 에 적힌 소스마다 **Stage 1~3 을 한 번 더** 돌려
+**별도 raw 파일**을 만든다 (aggregate 는 raw/ 폴더를 통째 스캔하므로 수정 불필요).
+
+```bash
+# paths.local.env 예 (WSL 머신):
+#   CLAUDE_LOG_EXTRA_SOURCES="win=/mnt/c/Users/kojunhyun/.claude/projects"
+# 형식: <suffix>=<projects 폴더> ; 여러 개면 세미콜론(;) 구분
+SOURCES="main=${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+[ -n "${CLAUDE_LOG_EXTRA_SOURCES:-}" ] && SOURCES="$SOURCES;$CLAUDE_LOG_EXTRA_SOURCES"
+IFS=';' read -ra SRC_LIST <<< "$SOURCES"
+for entry in "${SRC_LIST[@]}"; do
+  SUFFIX="${entry%%=*}"; PROJECTS_BASE="${entry#*=}"
+  [ -d "$PROJECTS_BASE" ] || { echo "[daily-log] $SUFFIX 소스 없음: $PROJECTS_BASE — skip"; continue; }
+  if [ "$SUFFIX" = "main" ]; then SRC_MID="$MID"; else SRC_MID="${MID}-${SUFFIX}"; fi
+  # → 이 PROJECTS_BASE / SRC_MID 로 Stage 1~3 수행
+done
+```
+
+소스별 규칙:
+- 파일명/Notion 제목의 머신 ID 는 `SRC_MID` 사용 (예: `2026-09-28_kjh-desktop-bhbekpa-win.md`).
+- frontmatter 에 `machine: <SRC_MID>` 와 `os: wsl|windows|macos|linux` 를 넣는다.
+  (`win` suffix → `os: windows`, 본문 제목에 "(Windows)" 표기)
+- **cwd 는 디렉토리명 역변환 대신 jsonl 안의 `"cwd"` 필드를 우선 사용** (`_`/`\` 가
+  `-` 로 뭉개져 역변환이 부정확함). Windows 경로 `D:\00_Project\foo` 는 git 조회 시
+  `/mnt/d/00_Project/foo` 로 변환:
+  ```bash
+  winpath_to_wsl() { local p="${1//\\//}"; local d="${p:0:1}"; echo "/mnt/${d,,}${p:2}"; }
+  ```
+- 메모리 변경(Stage 1-C)도 그 소스의 `PROJECTS_BASE/*/memory/*.md` 기준.
+- 해당 날짜 세션이 0개인 소스는 **raw 파일을 만들지 않는다** (빈 파일로 aggregate 오염 방지).
+- `subagents/` 하위 jsonl 은 세션 수에 넣지 말고 부모 세션의 서브에이전트 수로만 표기.
+
 ## Stage 1: 데이터 수집 (병렬)
 
 다음 소스를 **병렬 Bash** 로 수집한다:
@@ -178,6 +213,21 @@ mkdir -p "$OBS_RAW"
 
 > vault 가 공유되지 않으면 leader 가 다른 머신 raw 파일을 못 봄. 그 경우
 > 통합은 Notion 에서만 가능 (워크스페이스 단위 자동 통합).
+
+### Obsidian vault git 동기화 (best-effort)
+
+vault 를 obsidian-git(GitHub) 으로 공유하는 경우, Obsidian 앱이 꺼져 있으면 raw 가
+leader 에게 안 넘어간다. raw 저장 직후 이 머신이 직접 push 한다. 실패해도 skill 은 성공 처리.
+
+```bash
+VAULT="${OBSIDIAN_DIR:-$HOME/Obsidian}"
+if git -C "$VAULT" rev-parse --git-dir >/dev/null 2>&1; then
+  git -C "$VAULT" add -- "$OBS_RAW"/${DATE}_*.md
+  git -C "$VAULT" commit -m "daily-log raw: ${DATE} (${MID})" -- "$OBS_RAW"/${DATE}_*.md >/dev/null 2>&1 || true
+  git -C "$VAULT" pull --rebase --autostash -q 2>/dev/null || git -C "$VAULT" rebase --abort 2>/dev/null
+  git -C "$VAULT" push -q 2>/dev/null || echo "[daily-log] vault push 실패 — obsidian-git 에 맡김"
+fi
+```
 
 ### Notion — 멀티 타겟 (Integration Token, REST API)
 

@@ -56,6 +56,16 @@ DATE="${ARG_DATE:-$(date +%Y-%m-%d)}"
 
 ## Stage 1: Raw 수집
 
+### 0. vault 최신화 (best-effort)
+
+다른 머신 raw 는 GitHub(obsidian-git) 로 넘어온다. 스캔 전에 pull 한다. 실패해도 계속 진행.
+
+```bash
+VAULT="${OBSIDIAN_DIR:-$HOME/Obsidian}"
+git -C "$VAULT" rev-parse --git-dir >/dev/null 2>&1 && \
+  { git -C "$VAULT" pull --rebase --autostash -q 2>/dev/null || git -C "$VAULT" rebase --abort 2>/dev/null; }
+```
+
 ### A. Obsidian raw 폴더 스캔
 
 ```bash
@@ -71,6 +81,12 @@ fi
 
 # 각 raw 의 frontmatter 에서 MACHINE_ID 추출, 본문 보존
 ```
+
+머신 ID 가 `-win` 으로 끝나는 raw 는 **같은 PC 의 Windows 네이티브 세션**이다
+(daily-log Stage 0.5). 보고서에서는 WSL raw 와 짝지어 같은 PC 아래
+"WSL" / "Windows" 로 나눠 표기하고, 통계표에도 Windows 열을 별도로 둔다.
+
+저장 후에는 final 파일도 vault 에 commit + push (daily-log 의 "vault git 동기화"와 동일, best-effort).
 
 ### B. Notion raw 페이지 검색 (각 타겟별, REST API)
 

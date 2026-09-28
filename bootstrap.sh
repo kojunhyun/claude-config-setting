@@ -318,8 +318,13 @@ if [ "${BOOTSTRAP_AUTO_CRONTAB:-true}" = "true" ] && command -v crontab >/dev/nu
 #     OS 별 사용자 shell:
 #     - macOS: zsh 사용 (~/.zshrc 에 env exports) → zsh -ic
 #     - Linux/WSL: bash 사용 (~/.bashrc 에 env exports) → bash -ic
+#
+# (3) 네이티브 설치본(~/.local/bin/claude): ~/.local/bin 은 보통 ~/.profile 에서만
+#     PATH 에 추가되고 bash -ic 는 .profile 을 안 읽음 → "claude: command not found".
+#     (2026-08-07 WSL 에서 nvm → 네이티브 전환 후 cron 전부 실패한 원인)
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+export PATH="$HOME/.local/bin:$PATH"
 if [ "$(uname)" = "Darwin" ] && command -v zsh >/dev/null 2>&1; then
   exec zsh -ic 'claude "$@"' zsh "$@"
 else
