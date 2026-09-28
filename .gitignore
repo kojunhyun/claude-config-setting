@@ -45,3 +45,6 @@ security/
 
 # Claude Code synced account skills (machine-local runtime cache)
 skills/synced/
+
+# Claude Code runtime state (MCP discover verdicts 등, machine-local)
+state/
