@@ -155,29 +155,27 @@ attempt_tmux_recovery() {
     return 0
   fi
 
-  # Step 3: Find telegram entry + current cursor position
-  local target_line current_line
-  target_line=$(echo "$snap" | grep -n "plugin:telegram:telegram" | head -1 | cut -d: -f1)
-  current_line=$(echo "$snap" | grep -nE '^[[:space:]]*❯[[:space:]]' | head -1 | cut -d: -f1)
-  if [[ -z "$target_line" || -z "$current_line" ]]; then
-    log "${kind}: layout parse failed (target=${target_line:-?} current=${current_line:-?}). Escaping UI."
-    "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
-    return 0
-  fi
-
-  local downs=$((target_line - current_line))
-  if (( downs < 0 || downs > 30 )); then
-    log "${kind}: implausible downs=${downs}. Escaping UI."
-    "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
-    return 0
-  fi
-
-  # Step 4: Navigate down to telegram entry
-  local i
-  for ((i=0; i<downs; i++)); do
+  # Step 3+4: Walk the cursor down one key at a time until it sits on the
+  # telegram entry. Two things the old line-arithmetic got wrong:
+  #   - the transcript above the dialog also contains "❯ <user prompt>" lines,
+  #     so the cursor must be searched only BELOW the "Manage MCP servers" header
+  #   - the list has blank lines and non-selectable section headers, so
+  #     (target line - cursor line) is not the number of Down presses
+  # Re-reading the cursor after every key makes this independent of layout.
+  local cursor="" downs=0 max_downs=60
+  while :; do
+    cursor=$("${tmux_cmd[@]}" capture-pane -p -t "$pane" 2>/dev/null \
+      | awk '/Manage MCP servers/ { h=1 } h && /^[[:space:]]*❯[[:space:]]/ { print; exit }' || true)
+    [[ "$cursor" == *"plugin:telegram:telegram"* ]] && break
+    if [[ -z "$cursor" ]] || (( downs >= max_downs )); then
+      log "${kind}: telegram entry not reached (downs=${downs} cursor='${cursor}'). Escaping UI."
+      "${tmux_cmd[@]}" send-keys -t "$pane" Escape 2>/dev/null || true
+      return 0
+    fi
     "${tmux_cmd[@]}" send-keys -t "$pane" Down 2>/dev/null || true
+    downs=$((downs + 1))
+    sleep 0.2
   done
-  sleep 0.5
 
   # Step 5: Enter on telegram → sub-menu
   "${tmux_cmd[@]}" send-keys -t "$pane" Enter 2>/dev/null || true
